@@ -527,8 +527,14 @@ class DobotCommunicate:
     DobotCommunicate_Timeout = 2
 
 
-##################  API func   ##################
+CONNECT_RESULT = {
+    DobotConnect.DobotConnect_NoError: "DobotConnect_NoError",
+    DobotConnect.DobotConnect_NotFound: "DobotConnect_NotFound",
+    DobotConnect.DobotConnect_Occupied: "DobotConnect_Occupied"
+}
 
+
+##################  API func   ##################
 
 def get_machine():
     """Return type of machine."""
@@ -546,8 +552,8 @@ def os_bits():
     return machine2bits.get(machine, None)
 
 
-def load():
-    pre_path = platform.system() + '/x' + str(os_bits()) + '/'
+def load(pre="."):
+    pre_path = pre + "/" + platform.system() + '/x' + str(os_bits()) + '/'
     if platform.system() == "Windows":
         return CDLL(pre_path + "DobotDll.dll", RTLD_GLOBAL)
     elif platform.system() == "Darwin":  # MacOS
@@ -570,6 +576,14 @@ def output(str_):
     pass
 
 
+def GetDobotID(api):
+    return api.GetDobotID()
+
+
+def SpecifyDobotID(api, dobot_id):
+    api.SpecifyDobotID(dobot_id)
+
+
 def SearchDobot(api, maxLen=1000):
     szPara = create_string_buffer(1000)  # ((len(str(maxLen)) + 4) * maxLen + 10)
     l = api.SearchDobot(szPara, maxLen)
@@ -590,10 +604,6 @@ def ConnectDobot(api, portName, baudrate):
 
 def DisconnectDobot(api):
     api.DisconnectDobot()
-
-
-def PeriodicTask(api):
-    api.PeriodicTask()
 
 
 def SetCmdTimeout(api, times):
