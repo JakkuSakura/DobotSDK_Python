@@ -4,10 +4,6 @@
 #include "dobotdll_global.h"
 #include "DobotType.h"
 
-extern "C" DOBOTDLLSHARED_EXPORT int GetDobotID(void);
-
-extern "C" DOBOTDLLSHARED_EXPORT void SpecifyDobotID(int dobotId);
-
 extern "C" DOBOTDLLSHARED_EXPORT int DobotExec(void);
 
 extern "C" DOBOTDLLSHARED_EXPORT int SearchDobot(char *dobotNameList, uint32_t maxLen);
@@ -192,7 +188,7 @@ extern "C" DOBOTDLLSHARED_EXPORT int SetFirmwareMode(FirmwareMode *firmwareMode)
 extern "C" DOBOTDLLSHARED_EXPORT int GetFirmwareMode(FirmwareMode *firmwareMode);
 
 //LOSTSTEP
-extern "C" DOBOTDLLSHARED_EXPORT int SetLostStepParams(float threshold);
+extern "C" DOBOTDLLSHARED_EXPORT int SetLostStepParams(float threshold, bool isQueued, uint64_t *queuedCmdIndex);
 extern "C" DOBOTDLLSHARED_EXPORT int SetLostStepCmd(bool isQueued, uint64_t *queuedCmdIndex);
 
 //UART4 Peripherals

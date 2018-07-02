@@ -4,6 +4,8 @@ import sys
 import time
 from ctypes import *
 
+from typing import List
+
 
 class EndType:
     EndTypeCustom = 0
@@ -142,17 +144,17 @@ class JOGLParams(Structure):
 
 
 class JC:
-    JogIdle = 0
-    JogAPPressed = 1
-    JogANPressed = 2
-    JogBPPressed = 3
-    JogBNPressed = 4
-    JogCPPressed = 5
-    JogCNPressed = 6
-    JogDPPressed = 7
-    JogDNPressed = 8
-    JogEPPressed = 9
-    JogENPressed = 1
+    JogIdle = 0  # 空闲状态
+    JogAPPressed = 1  # X + 前/ Joint1 + 左
+    JogANPressed = 2  # X - 后/ Joint1 - 右
+    JogBPPressed = 3  # Y + 左/ Joint2 + 前
+    JogBNPressed = 4  # Y - 右/ Joint2 - 后
+    JogCPPressed = 5  # Z + 上/ Joint3 + 下
+    JogCNPressed = 6  # Z - 下/ Joint3 - 上
+    JogDPPressed = 7  # R + Joint4 + 顺势针
+    JogDNPressed = 8  # R - Joint4 - 逆时针
+    JogEPPressed = 9  # L +
+    JogENPressed = 10  # L -
 
 
 class JOGCmd(Structure):
@@ -212,16 +214,16 @@ class PTPCommonParams(Structure):
 
 
 class PTPMode:
-    PTPJUMPXYZMode = 0
-    PTPMOVJXYZMode = 1
-    PTPMOVLXYZMode = 2
-    PTPJUMPANGLEMode = 3
-    PTPMOVJANGLEMode = 4
-    PTPMOVLANGLEMode = 5
-    PTPMOVJANGLEINCMode = 6
-    PTPMOVLXYZINCMode = 7
-    PTPMOVJXYZINCMode = 8
-    PTPJUMPMOVLXYZMode = 9
+    PTP_JUMP_XYZ_Mode = 0
+    PTP_MOVJ_XYZ_Mode = 1
+    PTP_MOVL_XYZ_Mode = 2
+    PTP_JUMP_ANGL_EMode = 3
+    PTP_MOVJ_ANGL_EMode = 4
+    PTP_MOVL_ANGL_EMode = 5
+    PTP_MOVJ_ANGLE_INC_Mode = 6
+    PTP_MOVL_XYZ_INC_Mode = 7
+    PTP_MOVJ_XYZ_INC_Mode = 8
+    PTP_JUMP_MOVL_XYZ_Mode = 9
 
 
 class InputPin:
@@ -536,6 +538,7 @@ CONNECT_RESULT = {
 
 ##################  API func   ##################
 
+
 def get_machine():
     """Return type of machine."""
     if os.name == 'nt' and sys.version_info[:2] < (2, 7):
@@ -570,19 +573,12 @@ def gettime():
     return time.time()
 
 
-def output(str_):
-    print(str_)
+def output(*args, **kargs):
+    Debug = True
+    if not Debug:
+        return
+    print(*args, **kargs)
     sys.stdout.flush()
-    pass
-
-
-def GetDobotID(api):
-    return api.GetDobotID()
-
-
-def SpecifyDobotID(api, dobot_id):
-    api.SpecifyDobotID(dobot_id)
-
 
 def SearchDobot(api, maxLen=1000):
     szPara = create_string_buffer(1000)  # ((len(str(maxLen)) + 4) * maxLen + 10)
@@ -603,6 +599,7 @@ def ConnectDobot(api, portName, baudrate):
 
 
 def DisconnectDobot(api):
+    output("Disconnect Dobot")
     api.DisconnectDobot()
 
 
@@ -644,7 +641,7 @@ def GetAutoLevelingResult(api):
             dSleep(5)
             continue
         break
-    print("GetAutoLevelingResult", precision, precision.value)
+    output("GetAutoLevelingResult", precision, precision.value)
     output('GetAutoLevelingResult: precision=%d' % precision.value)
     return [precision.value]
 
@@ -676,6 +673,7 @@ def SetQueuedCmdStopExec(api):
             dSleep(5)
             continue
         break
+    output("Stopped queue successfully")
 
 
 def SetQueuedCmdForceStopExec(api):
@@ -685,6 +683,8 @@ def SetQueuedCmdForceStopExec(api):
             dSleep(5)
             continue
         break
+
+    output("Stopped queue forcely and successfully")
 
 
 def SetQueuedCmdStartDownload(api, totalLoop, linePerLoop):
@@ -803,7 +803,7 @@ def ResetPose(api, manual, rearArmAngle, frontArmAngle):
         break
 
 
-def GetPose(api):
+def GetPose(api) -> List[float]:
     pose = Pose()
     while True:
         result = api.GetPose(byref(pose))
@@ -1515,14 +1515,14 @@ def SetARCCmd(api, cirPoint, toPoint, isQueued=0):
     return [queuedCmdIndex.value]
 
 
-def SetWAITCmd(api, waitTime, isQueued=0):
+def SetWAITCmd(api, waitTimeMs, isQueued=1):
     param = WAITCmd()
-    param.waitTime = int(waitTime * 1000)
+    param.waitTime = waitTimeMs
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetWAITCmd(byref(param), isQueued, byref(queuedCmdIndex))
         if result != DobotCommunicate.DobotCommunicate_NoError:
-            dSleep(100)
+            dSleep(10)
             continue
         break
     return [queuedCmdIndex.value]
@@ -1654,15 +1654,15 @@ def SetEMotor(api, index, isEnabled, speed, isQueued=0):
     return [queuedCmdIndex.value]
 
 
-def SetEMotorS(api, index, isEnabled, speed, deltaPulse, isQueued=0):
-    emotor = EMotor()
-    emotor.index = index
-    emotor.isEnabled = isEnabled
-    emotor.deltaPulse = deltaPulse
-    emotor.speed = speed
+def SetEMotorS(api, index, isEnabled, speed, distance, isQueued=0):
+    emotors = EMotorS()
+    emotors.index = index
+    emotors.isEnabled = isEnabled
+    emotors.distance = distance
+    emotors.speed = speed
     queuedCmdIndex = c_uint64(0)
     while True:
-        result = api.SetEMotor(byref(emotor), isQueued, byref(queuedCmdIndex))
+        result = api.SetEMotorS(byref(emotors), isQueued, byref(queuedCmdIndex))
         if result != DobotCommunicate.DobotCommunicate_NoError:
             dSleep(5)
             continue
@@ -1955,10 +1955,10 @@ def GetWIFIDNS(api):
             c_uint8(wifiDNS.addr4).value]
 
 
-def SetColorSensor(api, isEnable):
+def SetColorSensor(api, isEnable, colorPort):
     enable = c_bool(isEnable)
     while True:
-        result = api.SetColorSensor(enable)
+        result = api.SetColorSensor(enable, colorPort)
         if result != DobotCommunicate.DobotCommunicate_NoError:
             dSleep(5)
             continue
@@ -1975,7 +1975,30 @@ def GetColorSensor(api):
             dSleep(5)
             continue
         break
-    return [r.value, g.value, b.value]
+    color = (r.value, g.value, b.value)
+    output("got color sensor", color)
+    return color
+
+
+def SetInfraredSensor(api, isEnable, infraredPort):
+    enable = c_bool(isEnable)
+    while True:
+        result = api.SetInfraredSensor(enable, infraredPort)
+        if result != DobotCommunicate.DobotCommunicate_NoError:
+            dSleep(5)
+            continue
+        break
+
+
+def GetInfraredSensor(api, infraredPort):
+    val = c_ubyte(0)
+    while True:
+        result = api.GetInfraredSensor(infraredPort, byref(val))
+        if result != DobotCommunicate.DobotCommunicate_NoError:
+            dSleep(5)
+            continue
+        break
+    return val.value
 
 
 ##################  Ex扩展函数，该套函数会检测每一条指令运行完毕  ##################
@@ -2004,12 +2027,12 @@ def SetHOMECmdEx(api, temp, isQueued=0):
         dSleep(100)
 
 
-def SetWAITCmdEx(api, waitTime, isQueued=0):
-    ret = SetWAITCmd(api, waitTime, isQueued)
+def SetWAITCmdEx(api, waitTimeMs, isQueued=0):
+    ret = SetWAITCmd(api, waitTimeMs, isQueued)
     while True:
         if ret[0] <= GetQueuedCmdCurrentIndex(api)[0]:
             break
-    dSleep(waitTime * 1000)
+        dSleep(waitTimeMs)
 
 
 def SetEndEffectorParamsEx(api, xBias, yBias, zBias, isQueued=0):
@@ -2107,8 +2130,8 @@ def SetEMotorEx(api, index, isEnabled, speed, isQueued=0):
         dSleep(5)
 
 
-def SetEMotorSEx(api, index, isEnabled, speed, deltaPulse, isQueued=0):
-    ret = SetEMotorS(api, index, isEnabled, speed, deltaPulse, isQueued)
+def SetEMotorSEx(api, index, isEnabled, speed, distance, isQueued=0):
+    ret = SetEMotorS(api, index, isEnabled, speed, distance, isQueued)
     while True:
         if ret[0] <= GetQueuedCmdCurrentIndex(api)[0]:
             break
@@ -2126,7 +2149,7 @@ def SetIOPWMEx(api, address, frequency, dutyCycle, isQueued=0):
 def SetPTPWithLCmdEx(api, ptpMode, x, y, z, rHead, l, isQueued=0):
     ret = GetDeviceWithL(api)
     if not ret:
-        print("Dobot is not in L model")
+        output("Dobot is not in L model")
         return
 
     ret = SetPTPWithLCmd(api, ptpMode, x, y, z, rHead, l, isQueued)

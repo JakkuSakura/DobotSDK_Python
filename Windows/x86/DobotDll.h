@@ -4,10 +4,6 @@
 #include "dobotdll_global.h"
 #include "DobotType.h"
 
-extern "C" DOBOTDLLSHARED_EXPORT int GetDobotID(void);
-
-extern "C" DOBOTDLLSHARED_EXPORT void SpecifyDobotID(int dobotId);
-
 extern "C" DOBOTDLLSHARED_EXPORT int DobotExec(void);
 
 extern "C" DOBOTDLLSHARED_EXPORT int SearchDobot(char *dobotNameList, uint32_t maxLen);
