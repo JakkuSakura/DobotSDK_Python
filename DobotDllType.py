@@ -556,8 +556,8 @@ def os_bits():
     return machine2bits.get(machine, None)
 
 
-def load(dobotId):
-    pre_path = "/" + platform.system() + '/x' + str(os_bits()) + '/'
+def load(dobotId=0):
+    pre_path = platform.system() + '/x' + str(os_bits()) + '/'
     if platform.system() == "Windows":
         old = pre_path + "DobotDll.dll"
         require = pre_path + "DobotDll_%s.dll" % str(dobotId)

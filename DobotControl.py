@@ -29,7 +29,7 @@ isRunning = True
 dType.Debug = False
 comes = False
 
-color = []
+last_color = []
 color_fix_set = {'b': [0, 0, 0], 'r': [0, 5, 0], 'g': [0, -6, 0], 'k': [0, 0, 0]}
 
 
@@ -41,7 +41,7 @@ def color_fix(cr):
 
 class Timer(threading.Thread):
     def run(self):
-        global comes, color
+        global comes, last_color
         print("Timer started")
         while isRunning:
             pos = dType.GetPose(api)
@@ -50,7 +50,7 @@ class Timer(threading.Thread):
             if 1 in nowcolor:
                 stopMoto()
                 comes = True
-                color = nowcolor
+                last_color = nowcolor
             dType.dSleep(100)
 
 
@@ -78,9 +78,11 @@ def moveToPart(x, y, z, part: list):
     pos = nowPos()
     to = (x, y, z)
     delta = [to[i] - pos[i] for i in range(3)]
-    for i in part:
-        l = [j * i for j in delta]
+    for i in range(len(part)-1):
+        l = [j * part[i] for j in delta]
+        l[2] = l[2] + 30.0
         moveInc(*tuple(l))
+    moveTo(x, y, z)
 
 
 def reletivePose(pose, dx=0, dy=0, dz=0):
@@ -114,7 +116,7 @@ def down(x):
 l = ['r', 'g', 'b', 'k']
 
 
-def getColorName():
+def getColorName(color):
     for i in range(len(color)):
         if color[i] != 0:
             return l[i]
@@ -123,9 +125,9 @@ def getColorName():
 
 
 carry_to_set = {
-    'r': (119, -173, -37),
-    'g': (82, 216, -37),
-    'b': (40, -228, -33),
+    'r': (65, -173, -37),
+    'g': (65, -173, -37),
+    'b': (65, -173, -33),
 }
 
 
@@ -138,11 +140,11 @@ def carry(frm):
         moveTo(*frm)
     while not comes:
         time.sleep(0.01)
-    moveInc(*reletivePose(color_fix(getColorName())))
-    down(20)
+    moveInc(*reletivePose(color_fix(getColorName(last_color))))
+    down(25)
     suck()
     up(30)
-    moveTo(*carry_to_set[getColorName()])
+    moveTo(*carry_to_set[getColorName(last_color)])
     unsuck()
 
     comes = False
@@ -157,7 +159,11 @@ def stopMoto():
     dType.SetEMotor(api, 1, 0, 0, 0)
 
 
-base_pose = (232.8, 154.4, 18)
+base_pose = (249, -9, 25)
+
+
+def getColor():
+    return dType.GetColorSensor(api)
 
 
 def init():
@@ -165,8 +171,7 @@ def init():
     dType.ClearAllAlarmsState(api)
     dType.SetQueuedCmdClear(api)
     dType.SetQueuedCmdStartExec(api)
-
-    up(50)
+    dType.SetHOMEParams(api, 270, 0, 50, 0, 1)
 
     dType.SetPTPJointParams(api, 200, 200, 200, 200, 200, 200, 200, 200, 1)
     dType.SetPTPCoordinateParams(api, 200, 200, 200, 200, 1)
@@ -174,13 +179,13 @@ def init():
     dType.SetPTPCommonParams(api, 100, 100, 1)
 
     dType.SetColorSensor(api, 1, dType.ColorPort.PORT_GP5)
-
-    # up(2000, 2000)
-    moveTo(*base_pose)
     # dType.SetHOMECmdEx(api, temp=0, isQueued=1)
+
+    moveTo(*base_pose)
+
     Timer().start()
     dType.dSleep(200)
-    if getColorName() == 'k':
+    if getColorName(getColor()) == 'k':
         startMoto()
 
 
@@ -207,6 +212,7 @@ if __name__ == '__main__':
         try:
             init()
             do()
+            # dType.DobotExec(api)
         except KeyboardInterrupt:
             pass
         finally:
