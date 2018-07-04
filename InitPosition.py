@@ -16,6 +16,6 @@ class Dobot(Carrier.DobotControl):
 
 if __name__ == "__main__":
     sr = Dobot.search()
-    dl = [Dobot(i + 1, sr[i]) for i in range(len(sr))]
+    dl = [Dobot(i, sr[i]) for i in range(len(sr))]
     for e in dl:
         e.start()

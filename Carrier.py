@@ -1,6 +1,7 @@
 import time
-from threading import Thread
+
 import DobotAPI
+from DobotControl import DobotControl
 
 
 class Settings:
@@ -18,84 +19,6 @@ class Settings:
     RIGHT_PUT_BASE = (155, -200, -35)
     BLOCK_SIZE = 25
     DobotAPI.Debug = False
-
-
-class DobotControl(Thread):
-    first_init = True
-    root_session = DobotAPI.Session('', '')
-    searched = []
-
-    @staticmethod
-    def search():
-        if DobotControl.first_init:
-            DobotControl.searched = DobotControl.root_session.SearchDobot()
-            print(DobotControl.searched)
-            DobotControl.first_init = False
-        return DobotControl.searched
-
-    def __init__(self, index, COM):
-        super().__init__()
-        self.addr = COM
-        self.connect_state = None
-        self.dobot = DobotAPI.Session(index)
-        self.dobot.SetCmdTimeout(300)
-        self.connect_state = self.dobot.ConnectDobot(COM)[0]
-        if COM not in DobotControl.search():
-            print("Cannot find port", COM)
-            return
-        print(COM, "Connect status:", DobotAPI.CONNECT_RESULT[self.connect_state])
-
-    def init(self):
-        if self.connect_state != DobotAPI.DobotConnect.DobotConnect_Successfully:
-            return
-        print("Initing dobot", self.addr)
-        self.dobot.ClearAllAlarmsState()
-        self.dobot.SetQueuedCmdClear()
-        self.dobot.SetQueuedCmdStartExec()
-        self.dobot.SetPTPJointParams(200, 200, 200, 200, 200, 200, 200, 200, 1)
-        self.dobot.SetPTPCoordinateParams(200, 200, 200, 200, 1)
-        self.dobot.SetPTPJumpParams(10, 200, 1)
-        self.dobot.SetPTPCommonParams(100, 100, 1)
-        self.unsuck()
-        self.moveInc(dz=50)
-        self.dobot.SetHOMEParams(*Settings.HOME_BASE, 0, 1)
-        # self.dobot.SetHOMECmdEx(temp=0, isQueued=1)
-
-    def run(self):
-        self.init()
-        self.work()
-
-    def clean(self):
-        """
-           You must mannully call this method
-           :return:
-        """
-        self.dobot.SetQueuedCmdForceStopExec()
-        self.dobot.DisconnectDobot()
-
-    def suck(self):
-        return self.dobot.SetEndEffectorSuctionCupEx(1, 1, 1)
-
-    def unsuck(self):
-        return self.dobot.SetEndEffectorSuctionCupEx(1, 0, 1)
-
-    def getDobot(self):
-        return self.dobot
-
-    def moveTo(self, x, y, z):
-        self.dobot.SetPTPCmdEx(DobotAPI.PTPMode.PTP_MOVJ_XYZ_Mode, x, y, z, 0, 1)
-
-    def moveInc(self, dx=0, dy=0, dz=0):
-        self.dobot.SetPTPCmdEx(DobotAPI.PTPMode.PTP_MOVJ_XYZ_INC_Mode, dx, dy, dz, 0, 1)
-
-    def __str__(self):
-        return "Dobot: %s %s" % (self.addr, self.connect_state)
-
-    def isOk(self):
-        return self.connect_state == DobotAPI.DobotConnect.DobotConnect_Successfully
-
-    def work(self):
-        pass
 
 
 class Left(DobotControl):
@@ -201,7 +124,6 @@ class Right(DobotControl):
 
 
 class Global:
-    # global status
     isTaken = True
 
     def __init__(self):
@@ -225,6 +147,7 @@ class Global:
             e.start()
 
     def clean(self):
+        print("cleaning")
         for e in self.dobots:
             if e.isOk():
                 e.clean()
@@ -234,5 +157,5 @@ if __name__ == '__main__':
     glb = Global()
     try:
         glb.run()
-    except KeyboardInterrupt:
+    finally:
         glb.clean()
