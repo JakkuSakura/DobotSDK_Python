@@ -31,6 +31,7 @@ class DobotControl(Thread):
     def init(self):
         print("Initing dobot", self.addr)
         self.dobot.ClearAllAlarmsState()
+        self.dobot.SetQueuedCmdStopExec()
         self.dobot.SetQueuedCmdClear()
         self.dobot.SetQueuedCmdStartExec()
         self.dobot.SetPTPJointParams(200, 200, 200, 200, 200, 200, 200, 200, 1)
@@ -40,7 +41,7 @@ class DobotControl(Thread):
         self.unsuck()
 
     def home(self, home_pose):
-        self.moveInc(dz=100)
+        print("Homing", self.addr)
         self.dobot.SetHOMEParams(*home_pose, 0, 1)
         self.dobot.SetHOMECmdEx(temp=0, isQueued=1)
 

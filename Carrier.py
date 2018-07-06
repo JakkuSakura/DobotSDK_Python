@@ -5,18 +5,19 @@ from DobotControl import DobotControl
 
 
 class Settings:
-    MOTOR_DIS = 50
+    MOTOR_DIS = 100000
     DEFAULT_MOTO_SPEED = 50
     COM_LEFT = "COM6"
     COM_RIGHT = "COM5"
 
     HOME_BASE = (255, 0, 40)
-    LEFT_GET_BASE = (81.61100769042969, 274.7370300292969, -39.551631927490234)
-    LEFT_PUT_BASE = (191.9342041015625, -4.1683244705200195, 23.778854370117188)
-    LEFT_CACHE_POSE = (183.4839630126953, 60.274253845214844, 29.90416717529297)
+    LEFT_GET_BASE = (89.71346282958984, 280.5124816894531, -36.28629684448242)
+    LEFT_PUT_BASE = (270.9342041015625, -4.1683244705200195, 20.778854370117188)
+
     LEFT_GET_DIS = 30
 
-    RIGHT_GET_BASE = (255.5, -12.8, 26.85)
+    RIGHT_GET_BASE = (262.66552734375, 157.94424438476562, 30.24797821044922)
+    RIGHT_COLOR_POSE = (194.63291931152344, -18.283044815063477, 33.190269470214844)
     RIGHT_PUT_BASE = (155, -200, -35)
     BLOCK_SIZE = 25
     DobotAPI.Debug = False
@@ -32,12 +33,10 @@ class Left(DobotControl):
         lst[0] -= Settings.LEFT_GET_DIS * (index // 4)
         lst[1] -= Settings.LEFT_GET_DIS * (index % 4)
         self.moveTo(*lst)
-        self.moveInc(dz=-20)
+        self.moveInc(dz=-10)
         self.suck()
-        self.moveInc(dz=40)
-
-    def moveToCache(self):
-        return self.moveTo(*Settings.LEFT_CACHE_POSE)
+        time.sleep(0.1)
+        self.moveInc(dz=50)
 
     def startMoto(self, speed=Settings.DEFAULT_MOTO_SPEED):
         vel = float(speed) * 282.94212105225836
@@ -52,14 +51,13 @@ class Left(DobotControl):
 
     def work(self):
         print("running left")
-        for i in range(12):
+        for i in range(1):
             self.getBlockLeft(i)
-            if self.glb.blockComes():
-                self.moveToCache()
             self.glb.waitTaken()
             self.stopMoto()
             self.realse()
-            self.startMotoS(Settings.MOTOR_DIS)
+            self.startMoto()
+        self.glb.sent = True
 
     def realse(self):
         l = list(Settings.LEFT_PUT_BASE)
@@ -77,17 +75,25 @@ class Right(DobotControl):
         self.counts = [0 for _ in range(3)]
 
     def init(self):
+        super().init()
         self.dobot.SetColorSensor(1, DobotAPI.ColorPort.PORT_GP5)
+        self.dobot.SetInfraredSensor(1, 1)
 
     def work(self):
         for i in range(12):
             self.moveAboveRight()
             self.waitComes()
             self.glb.stopMoto()
-
             self.getBlockRight()
-            self.moveToRight()
-            self.unsuck()
+            self.getColor()
+            self.release()
+            if self.glb.sent:
+                self.glb.startMoto()
+
+    def release(self):
+        self.moveToRight()
+        self.unsuck()
+        self.moveInc(dz=80)
 
     def moveAboveRight(self):
         self.moveTo(*Settings.RIGHT_GET_BASE)
@@ -117,17 +123,23 @@ class Right(DobotControl):
     def waitComes(self):
         while not self.blockComes():
             time.sleep(0.01)
-        self.last_color = self.getColor()
-        print("comes", self.last_color)
+        print("comes")
 
     def blockComes(self):
-        return 1 in self.dobot.GetInfraredSensor(1)
+        return self.dobot.GetInfraredSensor(1) == 1
 
     def getColor(self):
-        return self.dobot.GetColorSensor()
+        self.moveTo(*Settings.RIGHT_COLOR_POSE)
+        # while True:
+        self.last_color = self.dobot.GetColorSensor()
+        # if 1 in self.last_color:
+        #     break
+        print("color ", self.last_color)
+        self.moveInc(dz=10)
 
 
 class Global:
+    sent = False
     isTaken = True
 
     def __init__(self):
@@ -136,7 +148,7 @@ class Global:
         self.dobots = [self.left, self.right]
 
     def waitTaken(self):
-        while not Global.isTaken:
+        while not self.isTaken:
             time.sleep(0.01)
 
     def stopMoto(self):
@@ -147,6 +159,10 @@ class Global:
         if self.right.isOk():
             return self.right.blockComes()
         return False
+
+    def startMoto(self):
+        if self.left.isOk():
+            self.left.startMoto()
 
     def run(self):
         for e in self.dobots:

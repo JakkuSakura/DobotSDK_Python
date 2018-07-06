@@ -8,7 +8,8 @@ class Dobot(Carrier.DobotControl):
         super().__init__(index, COM)
 
     def work(self):
-        self.dobot.SetHOMECmdEx(temp=0, isQueued=1)
+        # self.moveTo(220, 0, 30)
+        # self.home((220, 0, 30))
         while True:
             print(self.addr, self.dobot.GetPose())
             time.sleep(0.5)
