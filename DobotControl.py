@@ -21,16 +21,14 @@ class DobotControl(Thread):
         self.addr = COM
         self.connect_state = None
         self.dobot = DobotAPI.Session(index)
-        self.dobot.SetCmdTimeout(300)
-        self.connect_state = self.dobot.ConnectDobot(COM)[0]
+        self.dobot.SetCmdTimeout(100)
         if COM not in DobotControl.search():
             print("Cannot find port", COM)
             return
+        self.connect_state = self.dobot.ConnectDobot(COM)[0]
         print(COM, "Connect status:", DobotAPI.CONNECT_RESULT[self.connect_state])
 
     def init(self):
-        if self.connect_state != DobotAPI.DobotConnect.DobotConnect_Successfully:
-            return
         print("Initing dobot", self.addr)
         self.dobot.ClearAllAlarmsState()
         self.dobot.SetQueuedCmdClear()
@@ -47,6 +45,8 @@ class DobotControl(Thread):
         self.dobot.SetHOMECmdEx(temp=0, isQueued=1)
 
     def run(self):
+        if not self.isOk():
+            return
         self.init()
         self.work()
 

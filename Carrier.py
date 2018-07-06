@@ -11,9 +11,10 @@ class Settings:
     COM_RIGHT = "COM5"
 
     HOME_BASE = (255, 0, 40)
-    LEFT_GET_BASE = (122.18338012695312, 222.9822540283203, -44.83717727661133)
+    LEFT_GET_BASE = (81.61100769042969, 274.7370300292969, -39.551631927490234)
     LEFT_PUT_BASE = (191.9342041015625, -4.1683244705200195, 23.778854370117188)
     LEFT_CACHE_POSE = (183.4839630126953, 60.274253845214844, 29.90416717529297)
+    LEFT_GET_DIS = 30
 
     RIGHT_GET_BASE = (255.5, -12.8, 26.85)
     RIGHT_PUT_BASE = (155, -200, -35)
@@ -28,8 +29,8 @@ class Left(DobotControl):
 
     def getBlockLeft(self, index):
         lst = list(Settings.LEFT_GET_BASE)
-        lst[0] -= Settings.BLOCK_SIZE * (index // 4)
-        lst[1] -= Settings.BLOCK_SIZE * (index % 4)
+        lst[0] -= Settings.LEFT_GET_DIS * (index // 4)
+        lst[1] -= Settings.LEFT_GET_DIS * (index % 4)
         self.moveTo(*lst)
         self.moveInc(dz=-20)
         self.suck()
@@ -50,6 +51,7 @@ class Left(DobotControl):
         self.dobot.SetEMotor(1, 0, 0, 1)
 
     def work(self):
+        print("running left")
         for i in range(12):
             self.getBlockLeft(i)
             if self.glb.blockComes():
@@ -71,9 +73,11 @@ class Right(DobotControl):
     def __init__(self, index, COM, glb):
         super().__init__(index, COM)
         self.last_color = None
-        self.dobot.SetColorSensor(1, DobotAPI.ColorPort.PORT_GP5)
         self.glb = glb
         self.counts = [0 for _ in range(3)]
+
+    def init(self):
+        self.dobot.SetColorSensor(1, DobotAPI.ColorPort.PORT_GP5)
 
     def work(self):
         for i in range(12):
@@ -117,7 +121,7 @@ class Right(DobotControl):
         print("comes", self.last_color)
 
     def blockComes(self):
-        return 1 in self.getColor()
+        return 1 in self.dobot.GetInfraredSensor(1)
 
     def getColor(self):
         return self.dobot.GetColorSensor()
@@ -127,24 +131,30 @@ class Global:
     isTaken = True
 
     def __init__(self):
-        self.dobots = [Left(0, Settings.COM_LEFT, self), Right(1, Settings.COM_RIGHT, self)]
+        self.left = Left(0, Settings.COM_LEFT, self)
+        self.right = Right(1, Settings.COM_RIGHT, self)
+        self.dobots = [self.left, self.right]
 
     def waitTaken(self):
         while not Global.isTaken:
             time.sleep(0.01)
 
     def stopMoto(self):
-        if self.dobots[0].isOk():
-            self.dobots[0].stopMoto()
+        if self.left.isOk():
+            self.left.stopMoto()
 
     def blockComes(self):
-        if self.dobots[1].isOk():
-            return self.dobots[1].blockComes()
+        if self.right.isOk():
+            return self.right.blockComes()
         return False
 
     def run(self):
         for e in self.dobots:
-            e.start()
+            if e is not None and e.isOk():
+                e.start()
+        for e in self.dobots:
+            if e is not None and e.isOk():
+                e.join()
 
     def clean(self):
         print("cleaning")
