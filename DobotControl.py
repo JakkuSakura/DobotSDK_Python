@@ -34,10 +34,10 @@ class DobotControl(Thread):
         self.dobot.SetQueuedCmdStopExec()
         self.dobot.SetQueuedCmdClear()
         self.dobot.SetQueuedCmdStartExec()
-        self.dobot.SetPTPJointParams(200, 200, 200, 200, 200, 200, 200, 200, 1)
-        self.dobot.SetPTPCoordinateParams(200, 200, 200, 200, 1)
-        self.dobot.SetPTPJumpParams(10, 200, 1)
-        self.dobot.SetPTPCommonParams(100, 100, 1)
+        self.dobot.SetPTPJointParamsEx(400, 400, 400, 400, 400, 400, 400, 400, 1)
+        self.dobot.SetPTPCoordinateParams(400, 400, 400, 400, 1)
+        self.dobot.SetPTPJumpParamsEx(10, 400, 1)
+        self.dobot.SetPTPCommonParamsEx(400, 200, 1)
         self.unsuck()
 
     def home(self, home_pose):
@@ -74,6 +74,14 @@ class DobotControl(Thread):
 
     def moveInc(self, dx=0, dy=0, dz=0):
         self.dobot.SetPTPCmdEx(DobotAPI.PTPMode.PTP_MOVJ_XYZ_INC_Mode, dx, dy, dz, 0, 1)
+
+    def moveSpt(self, x, y, z, spt_times):
+        now = self.dobot.GetPose()
+        tup = (x, y, z)
+        each_list = [(tup[x] - now[x]) / spt_times for x in range(3)]
+        print(each_list)
+        for i in range(spt_times):
+            self.moveInc(*each_list)
 
     def __str__(self):
         return "Dobot: %s %s" % (self.addr, self.connect_state)

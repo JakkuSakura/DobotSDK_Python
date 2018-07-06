@@ -8,11 +8,12 @@ class Dobot(Carrier.DobotControl):
         super().__init__(index, COM)
 
     def work(self):
-        # self.moveTo(220, 0, 30)
-        # self.home((220, 0, 30))
+        # self.moveTo(220, 0, 80)
+        # self.home((220, 0, 80))
         while True:
             print(self.addr, self.dobot.GetPose())
-            time.sleep(0.5)
+            print(self.addr, self.dobot.GetColorSensor())
+            time.sleep(0.1)
 
 
 if __name__ == "__main__":
