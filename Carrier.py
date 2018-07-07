@@ -17,11 +17,14 @@ class Settings:
     LEFT_PUT_BASE = (245.9342041015625, -4.1683244705200195, 20.778854370117188)
 
     LEFT_GET_DIS = 30
+    RIGHT_GET_DIS = 30
 
+    # todo update this
+    RIGHT_TEMP_BASE = (220.6810607910156, 50, 25.20525360107422)
     RIGHT_GET_BASE = (255.6810607910156, -15, 25.20525360107422)
     RIGHT_FIX_Y = 10
 
-    RIGHT_PUT_BASE = (155, -200, -33)
+    RIGHT_PUT_BASE = (155, -200, -28)
     BLOCK_SIZE = 25
     DobotAPI.Debug = False
 
@@ -47,15 +50,11 @@ class Left(DobotControl):
         print("running left")
         for i in range(12):
             self.getBlockLeft(i)
-            self.waitForCome()
             self.gotoPut()
-            self.waitForCome()
             self.stopMoto()
             self.release()
-            self.waitForCome()
             self.startMotoS(Settings.MOTOR_DIS)
-            self.waitForCome()
-        self.glb.sent = True
+        self.glb.trans_moto_control = True
 
     def moveSpt(self, x, y, z, spt_times):
         now = self.dobot.GetPose()
@@ -70,7 +69,7 @@ class Left(DobotControl):
         lst = list(Settings.LEFT_GET_BASE)
         lst[0] -= Settings.LEFT_GET_DIS * (index // 4)
         lst[1] -= Settings.LEFT_GET_DIS * (index % 4)
-        self.moveSpt(*lst, 2)
+        self.moveTo(*lst)
         self.moveInc(dz=-15)
         self.waitForCome()
         self.suck()
@@ -83,9 +82,9 @@ class Left(DobotControl):
         self.dobot.SetEMotorEx(Settings.MOTOR_PORT, 1, int(vel), 1)
 
     def startMotoS(self, distance, speed=Settings.DEFAULT_MOTO_SPEED):
-        raise Exception("Do not use this")
         vel = float(speed) * 282.94212105225836
         self.dobot.SetEMotorSEx(Settings.MOTOR_PORT, 1, int(vel), distance, 1)
+        time.sleep(1)
 
     def stopMoto(self):
         self.dobot.SetEMotorEx(Settings.MOTOR_PORT, 0, 0, 1)
@@ -119,18 +118,30 @@ class Right(DobotControl):
 
     def work(self):
         print("running right")
+        print("temp blocks")
+        for i in range(8):
+            lz = i / 4
+            lx = i % 4 / 2
+            ly = i % 2
+            pose = Settings.RIGHT_TEMP_BASE
+            tp = (lx, ly, lz)
+            for i in range(3):
+                pose[i] - + tp[i] * Settings.RIGHT_GET_DIS
+
+        print("left zone blocks")
         for i in range(12):
             self.moveAboveRight()
             self.waitComes()
-            self.glb.isTaken = False
             self.glb.stopMoto()
-            self.getBlock()
-            self.glb.isTaken = True
-            self.moveToRight()
-            self.release()
-            if self.glb.sent and not self.blockComes():
+            self.getAndPut()
+            if self.glb.trans_moto_control and not self.blockComes():
                 self.glb.startMoto()
         self.glb.running = False
+
+    def getAndPut(self):
+        self.getBlock()
+        self.moveToRight()
+        self.release()
 
     def release(self):
         time.sleep(0.1)
