@@ -28,6 +28,9 @@ class DobotControl(Thread):
         self.connect_state = self.dobot.ConnectDobot(COM)[0]
         print(COM, "Connect status:", DobotAPI.CONNECT_RESULT[self.connect_state])
 
+    def user_init(self):
+        pass
+
     def init(self):
         print("Initing dobot", self.addr)
         self.dobot.ClearAllAlarmsState()
@@ -39,6 +42,7 @@ class DobotControl(Thread):
         self.dobot.SetPTPJumpParamsEx(10, 400, 1)
         self.dobot.SetPTPCommonParamsEx(400, 200, 1)
         self.unsuck()
+        self.user_init()
 
     def home(self, home_pose):
         print("Homing", self.addr)
@@ -69,7 +73,11 @@ class DobotControl(Thread):
     def getDobot(self):
         return self.dobot
 
-    def moveTo(self, x, y, z):
+    def moveTo(self, x=None, y=None, z=None):
+        nowPos = self.dobot.GetPose()
+        x = x or nowPos[0]
+        y = y or nowPos[1]
+        z = z or nowPos[2]
         self.dobot.SetPTPCmdEx(DobotAPI.PTPMode.PTP_MOVJ_XYZ_Mode, x, y, z, 0, 1)
 
     def moveInc(self, dx=0, dy=0, dz=0):
