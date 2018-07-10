@@ -128,7 +128,7 @@ class Right(DobotControl):
     def work(self):
         print("running right")
         print("temp blocks")
-        for i in range(0):
+        for i in range(4, 8):
             print("temp block", i)
             self.moveToGetTempRight(i)
             self.capture()
