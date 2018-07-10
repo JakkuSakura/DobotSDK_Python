@@ -33,6 +33,8 @@ class DobotControl(Thread):
 
     def init(self):
         print("Initing dobot", self.addr)
+        DobotAPI.GetPose(self.dobot.api)
+        self.dobot.GetPose()
         self.dobot.ClearAllAlarmsState()
         self.dobot.SetQueuedCmdStopExec()
         self.dobot.SetQueuedCmdClear()

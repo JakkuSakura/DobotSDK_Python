@@ -6,7 +6,6 @@ from DobotControl import DobotControl
 
 
 class Settings:
-    INFRARED_PORT = DobotAPI.InfraredPort.PORT_GP2
     MOTOR_DIS = 10000
     DEFAULT_MOTO_SPEED = 50
     COM_LEFT = "COM5"
@@ -21,7 +20,7 @@ class Settings:
 
     RIGHT_TEMP_BASE = (152.51332092285156, 205.30560302734375, -5.84282684326172)
     RIGHT_GET_BASE = (260.6810607910156, -15, 27.20525360107422)
-    RIGHT_FIX_Y = 10
+    # RIGHT_FIX_Y = 10
 
     RIGHT_WASTE_POSE = (173, 102, 10)
     RIGHT_PUT_BASE = (155, -200, -38)
@@ -30,7 +29,7 @@ class Settings:
     DobotAPI.Debug = False
 
     MOTOR_PORT = DobotAPI.EMotorPort.EMotor_1
-
+    INFRARED_PORT = DobotAPI.InfraredPort.PORT_GP2
     COLOR_PORT = DobotAPI.ColorPort.PORT_GP4
 
 
@@ -113,7 +112,7 @@ class Right(DobotControl):
 
     def user_init(self):
         self.dobot.SetColorSensor(1, Settings.COLOR_PORT)
-        self.dobot.SetInfraredSensor(1, 1)
+        self.dobot.SetInfraredSensor(1, Settings.INFRARED_PORT)
         self.moveTo(*Settings.HOME_BASE)
         if self.debug:
             self.moveTo(*Settings.RIGHT_GET_BASE)

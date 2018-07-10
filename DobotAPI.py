@@ -502,22 +502,20 @@ class WIFIDNS(Structure):
     ]
 
 
-class PORT_GP:
+class PortGp:
     PORT_GP1 = 0
     PORT_GP2 = 1
     PORT_GP4 = 2
     PORT_GP5 = 3
 
 
-ColorPort = PORT_GP
+ColorPort = PortGp
+InfraredPort = PortGp
 
 
 class EMotorPort:
     EMotor_1 = 0
     EMotor_2 = 1
-
-
-InfraredPort = PORT_GP
 
 
 ##################  api, dobotId result   ##################
