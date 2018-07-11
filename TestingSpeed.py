@@ -1,14 +1,14 @@
 import time
 
-import Carrier
+import DualCarriers
 from DobotControl import DobotControl
 
 
 class Left(DobotControl):
     def __init__(self, index, COM):
         super().__init__(index, COM)
-        if Carrier.Settings.HOME_INIT:
-            self.home(Carrier.Settings.HOME_BASE)
+        if DualCarriers.Settings.HOME_INIT:
+            self.home(DualCarriers.Settings.HOME_BASE)
 
     def work(self):
         print("running left")
@@ -20,9 +20,9 @@ class Left(DobotControl):
                 self.gotoPut()
 
     def getBlockLeft(self, index):
-        lst = list(Carrier.Settings.LEFT_GET_BASE)
-        lst[0] -= Carrier.Settings.LEFT_GET_DIS_X * (index // 4)
-        lst[1] -= Carrier.Settings.LEFT_GET_DIS_Y * (index % 4)
+        lst = list(DualCarriers.Settings.LEFT_GET_BASE)
+        lst[0] -= DualCarriers.Settings.LEFT_GET_DIS_X * (index // 4)
+        lst[1] -= DualCarriers.Settings.LEFT_GET_DIS_Y * (index % 4)
         self.moveTo(*lst)
         self.moveInc(dz=-15)
         self.suck()
@@ -30,7 +30,7 @@ class Left(DobotControl):
         self.moveInc(dz=50)
 
     def gotoPut(self):
-        l = list(Carrier.Settings.LEFT_PUT_BASE)
+        l = list(DualCarriers.Settings.LEFT_PUT_BASE)
         l[2] += 10
         self.moveTo(*l)
         self.moveInc(dz=-10)

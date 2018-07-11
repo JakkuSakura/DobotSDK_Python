@@ -1,8 +1,8 @@
 import time
 
-import Carrier
+import DualCarriers
 import DobotAPI
-import Carrier
+import DualCarriers
 import winsound
 
 from DobotControl import DobotControl
@@ -34,8 +34,8 @@ class Right(DobotControl):
 class Left(DobotControl):
     def __init__(self, index, COM):
         super().__init__(index, COM)
-        if Carrier.Settings.HOME_INIT:
-            self.home(Carrier.Settings.HOME_BASE)
+        if DualCarriers.Settings.HOME_INIT:
+            self.home(DualCarriers.Settings.HOME_BASE)
 
     def work(self):
         print("running left")
@@ -56,30 +56,24 @@ class Left(DobotControl):
             self.moveInc(*each_list)
 
     def getBlockLeft(self, index):
-        lst = list(Carrier.Settings.LEFT_GET_BASE)
-        lst[0] -= Carrier.Settings.LEFT_GET_DIS_X * (index // 4)
-        lst[1] -= Carrier.Settings.LEFT_GET_DIS_Y * (index % 4)
+        lst = list(DualCarriers.Settings.LEFT_GET_BASE)
+        lst[0] -= DualCarriers.Settings.LEFT_GET_DIS_X * (index // 4)
+        lst[1] -= DualCarriers.Settings.LEFT_GET_DIS_Y * (index % 4)
         self.moveTo(*lst)
         self.moveInc(dz=-15)
         self.suck()
         time.sleep(0.1)
         self.moveInc(dz=50)
 
-    def startMoto(self, speed=Carrier.Settings.DEFAULT_MOTO_SPEED):
+    def startMoto(self, speed=DualCarriers.Settings.DEFAULT_MOTO_SPEED):
         vel = float(speed) * 282.94212105225836
-        self.dobot.SetEMotorEx(Carrier.Settings.MOTOR_PORT, 1, int(vel), 1)
-
-    def startMotoS(self, distance, speed=Carrier.Settings.DEFAULT_MOTO_SPEED):
-        vel = float(speed) * 282.94212105225836
-        self.dobot.SetEMotorSEx(Carrier.Settings.MOTOR_PORT, 1, int(vel), distance, 1)
-
-        time.sleep(Carrier.Settings.MOVE_TIME)
+        self.dobot.SetEMotorEx(DualCarriers.Settings.MOTOR_PORT, 1, int(vel), 1)
 
     def stopMoto(self):
-        self.dobot.SetEMotorEx(Carrier.Settings.MOTOR_PORT, 0, 0, 1)
+        self.dobot.SetEMotorEx(DualCarriers.Settings.MOTOR_PORT, 0, 0, 1)
 
     def gotoPut(self):
-        l = list(Carrier.Settings.LEFT_PUT_BASE)
+        l = list(DualCarriers.Settings.LEFT_PUT_BASE)
         l[2] += 10
         self.moveTo(*l)
         self.moveInc(dz=-10)
@@ -98,5 +92,5 @@ if __name__ == "__main__":
     rt = Right(0, "COM6")
     rt.start()
 
-    left = Left(1, "COM5")
-    left.start()
+    # left = Left(1, "COM5")
+    # left.start()
