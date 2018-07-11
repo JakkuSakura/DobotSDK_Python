@@ -31,7 +31,7 @@ class DobotControl(Thread):
     def user_init(self):
         pass
 
-    def init(self):
+    def init(self, speed=400):
         print("Initing dobot", self.addr)
         DobotAPI.GetPose(self.dobot.api)
         self.dobot.GetPose()
@@ -39,15 +39,16 @@ class DobotControl(Thread):
         self.dobot.SetQueuedCmdStopExec()
         self.dobot.SetQueuedCmdClear()
         self.dobot.SetQueuedCmdStartExec()
-        self.dobot.SetPTPJointParamsEx(400, 400, 400, 400, 400, 400, 400, 400, 1)
-        self.dobot.SetPTPCoordinateParams(400, 400, 400, 400, 1)
-        self.dobot.SetPTPJumpParamsEx(10, 400, 1)
-        self.dobot.SetPTPCommonParamsEx(400, 200, 1)
+        self.dobot.SetPTPJointParamsEx(speed, speed, speed, speed, speed, speed, speed, speed, 1)
+        self.dobot.SetPTPCoordinateParams(speed, speed, speed, speed, 1)
+        self.dobot.SetPTPJumpParamsEx(10, speed, 1)
+        self.dobot.SetPTPCommonParamsEx(speed, speed, 1)
         self.unsuck()
         self.user_init()
 
     def home(self, home_pose):
         print("Homing", self.addr)
+        self.moveTo(*home_pose)
         self.dobot.SetHOMEParams(*home_pose, 0, 1)
         self.dobot.SetHOMECmdEx(temp=0, isQueued=1)
 

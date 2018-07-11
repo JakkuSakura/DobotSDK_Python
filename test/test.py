@@ -1,7 +1,14 @@
+import time
+
+
 def main():
+    time.sleep(1)
+    global g
+    g = 3
     a = 1
     b = 6 ** 2
-    c = 6 // 2
+    # double b = Math.pow(6, 2);
+    c = 6 // 4
     d = 6 / 4
     e = a * b
     print(a, b, c, d, e)
@@ -20,14 +27,14 @@ def main():
     print(l, l[0], l[1], len(l))
 
     di = {1: "abc", 2: "def"}
-    print(di, di[1], di[2], di.get(3))
+    print(di, di[1], di[2], di.get(3), di[3])
 
     tu = (3, 5, 6)
 
     for i in range(3, 10, 2):
         print(i)
     foo()
-    foo2(3)
+    a2 = foo2(3)
 
     myclass = Cls()
     myclass.foo3()
@@ -40,12 +47,14 @@ def foo():
 
 def foo2(a):
     print("in foo", a)
+    return a + 1
 
 
 class Cls:
     def __init__(self):
         print("in init")
         self.val = 6
+        self.aaa = None
 
     def foo3(self):
         print("foo3")

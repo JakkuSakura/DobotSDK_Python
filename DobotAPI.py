@@ -514,8 +514,8 @@ InfraredPort = PortGp
 
 
 class EMotorPort:
-    EMotor_1 = 0
-    EMotor_2 = 1
+    EMOTOR_1 = 0
+    EMOTOR_2 = 1
 
 
 ##################  api, dobotId result   ##################
