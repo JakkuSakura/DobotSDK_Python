@@ -1,11 +1,11 @@
 from threading import Thread
 
 import DobotAPI
-
+from DobotSession import DobotSession
 
 class DobotControl(Thread):
     first_init = True
-    root_session = DobotAPI.Session('', '')
+    root_session = DobotSession('', '')
     searched = []
 
     @staticmethod
@@ -20,7 +20,7 @@ class DobotControl(Thread):
         super().__init__()
         self.addr = COM
         self.connect_state = None
-        self.dobot = DobotAPI.Session(index)
+        self.dobot = DobotSession(index)
         self.dobot.SetCmdTimeout(100)
         if COM not in DobotControl.search():
             print("Cannot find port", COM)
@@ -76,15 +76,17 @@ class DobotControl(Thread):
     def getDobot(self):
         return self.dobot
 
-    def moveTo(self, x=None, y=None, z=None):
+    def moveTo(self, x=None, y=None, z=None, straight=False):
         nowPos = self.dobot.GetPose()
         x = x or nowPos[0]
         y = y or nowPos[1]
         z = z or nowPos[2]
-        self.dobot.SetPTPCmdEx(DobotAPI.PTPMode.PTP_MOVJ_XYZ_Mode, x, y, z, 0, 1)
+        moveMode = DobotAPI.PTPMode.PTP_MOVL_XYZ_Mode if straight else DobotAPI.PTPMode.PTP_MOVJ_XYZ_Mode
+        self.dobot.SetPTPCmdEx(moveMode, x, y, z, 0, 1)
 
-    def moveInc(self, dx=0, dy=0, dz=0):
-        self.dobot.SetPTPCmdEx(DobotAPI.PTPMode.PTP_MOVJ_XYZ_INC_Mode, dx, dy, dz, 0, 1)
+    def moveInc(self, dx=0, dy=0, dz=0, straight=False):
+        moveMode = DobotAPI.PTPMode.PTP_MOVL_XYZ_INC_Mode if straight else DobotAPI.PTPMode.PTP_MOVJ_XYZ_INC_Mode
+        self.dobot.SetPTPCmdEx(moveMode, dx, dy, dz, 0, 1)
 
     def moveSpt(self, x, y, z, spt_times):
         now = self.dobot.GetPose()
@@ -102,3 +104,14 @@ class DobotControl(Thread):
 
     def work(self):
         pass
+
+
+def color_exists(n):
+    if type(n) == int:
+        return n == 255 or n == 1
+    else:
+        for e in n:
+            if color_exists(e):
+                return True
+        else:
+            return False

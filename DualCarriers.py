@@ -1,9 +1,8 @@
-import math
 import threading
 import time
 
 import DobotAPI
-from DobotControl import DobotControl
+from DobotControl import DobotControl, color_exists
 
 
 class Settings:
@@ -21,7 +20,7 @@ class Settings:
     LEFT_GET_DIS_X = 24.5
     RIGHT_GET_DIS = 30
 
-    RIGHT_TEMP_BASE = (153, 206.30560302734375, -8.84282684326172)
+    RIGHT_TEMP_BASE = (153, 202.30560302734375, -8.84282684326172)
     RIGHT_GET_BASE = (260.68, -15, 27.20525360107422)
     RIGHT_FIX_Y = (11, 10, 10)
     RIGHT_PUT_BASE = (155, -185, -38)
@@ -38,7 +37,7 @@ class Settings:
     # INFRARED_PORT = DobotAPI.InfraredPort.PORT_GP2
     COLOR_PORT = DobotAPI.ColorPort.PORT_GP4
 
-    ENABLE_LEFT = True
+    ENABLE_LEFT = False
 
     RIGHT_DEBUG = False
 
@@ -131,9 +130,9 @@ class Interal(threading.Thread):
             time.sleep(0.1)
 
 
-def find(lst, a, default=-1):
+def find_color_index(lst, default=-1):
     for i in range(len(lst)):
-        if lst[i] == a:
+        if color_exists(lst[i]):
             return i
     else:
         return default
@@ -148,7 +147,7 @@ class Right(DobotControl):
         if Settings.HOME_INIT:
             self.home(Settings.HOME_BASE)
 
-    def init(self, speed=200):
+    def init(self, speed=600):
         super().init(speed)
 
     def user_init(self):
@@ -189,7 +188,7 @@ class Right(DobotControl):
             self.waitComes()
             self.glb.stopMoto()
             color = self.readColorForTimes(10)
-            index = find(color, 1, 1)
+            index = find_color_index(color, 1)
 
             self.moveAboveGetPlaceRight(fix=Settings.RIGHT_FIX_Y[index])
             self.capture(up=30)
@@ -272,10 +271,10 @@ class Right(DobotControl):
     def moveToPutPlace(self, color):
         pose = list(Settings.RIGHT_PUT_BASE)
         if type(color) == tuple or type(color) == list:
+            index = find_color_index(color, -1)
+        else:
             index = color
             self.moveTo(z=60)
-        else:
-            index = find(color, 1, -1)
 
         if index >= 0:
             pose[2] += self.counts[index] * Settings.BLOCK_SIZE
