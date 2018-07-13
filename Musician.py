@@ -1,5 +1,6 @@
 import time
 
+import DobotTypes
 import DualCarriers
 import DobotAPI
 import DualCarriers
@@ -65,12 +66,6 @@ class Left(DobotControl):
         time.sleep(0.1)
         self.moveInc(dz=50)
 
-    def startMoto(self, speed=DualCarriers.Settings.DEFAULT_MOTO_SPEED):
-        vel = float(speed) * 282.94212105225836
-        self.dobot.SetEMotorEx(DualCarriers.Settings.MOTOR_PORT, 1, int(vel), 1)
-
-    def stopMoto(self):
-        self.dobot.SetEMotorEx(DualCarriers.Settings.MOTOR_PORT, 0, 0, 1)
 
     def gotoPut(self):
         l = list(DualCarriers.Settings.LEFT_PUT_BASE)
@@ -85,7 +80,7 @@ class Left(DobotControl):
         self.moveInc(dz=20)
 
     def clean(self):
-        self.stopMoto()
+        self.stopMoto(DobotTypes.EMotorPort.EMOTOR_1)
 
 
 if __name__ == "__main__":

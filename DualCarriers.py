@@ -89,17 +89,13 @@ class Right(DobotControl):
         print("temp blocks")
         for i in range(4):
             print("temp block", i)
-            self.reset_pose()
             self.moveToGetTemp(i)
-            self.reset_pose()
             self.capture()
             if Settings.COLOR_SERIES is not None and i < len(Settings.COLOR_SERIES):
                 color = Settings.COLOR_SERIES[i]
             else:
-                self.reset_pose()
                 self.moveAboveGetPlace()
                 color = self.readColor(times=10, default=(0, 1, 0))
-            self.reset_pose()
             self.moveToPutPlace(color)
             self.release(down=5, up=10)
         self.glb.finished_temp = True
@@ -118,12 +114,10 @@ class Right(DobotControl):
             color = self.readColor(times=10)
             index = find_color_index(color, 1)
 
-            self.reset_pose()
             self.moveAboveGetPlace(fix=Settings.RIGHT_FIX_Y[index])
             self.capture(up=30)
             self.glb.is_taken = True
             self.glb.awaitting = False
-            self.reset_pose()
             self.moveToPutPlace(color)
             self.release(down=5, up=30)
         self.glb.is_running = False
@@ -265,10 +259,8 @@ class Left(DobotControl):
         print("running left")
         for i in range(12):
             self.wait()
-            self.reset_pose()
             self.getBlockLeft(i)
             self.wait()
-            self.reset_pose()
             self.gotoPut()
             self.wait()
             self.left_putting = True
