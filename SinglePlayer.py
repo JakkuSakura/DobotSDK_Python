@@ -1,6 +1,7 @@
 import time
 
 import DobotAPI
+import DobotTypes
 from DobotControl import DobotControl
 
 
@@ -20,7 +21,7 @@ class Settings:
     BLOCK_SIZE = 26
     DobotAPI.Debug = False
     RIGHT_DEBUG = True
-    COLOR_PORT = DobotAPI.ColorPort.PORT_GP4
+    COLOR_PORT = DobotTypes.ColorPort.PORT_GP4
     HOME_INIT = False
 
     R = 0
@@ -114,7 +115,6 @@ class Robot(DobotControl):
             self.moveTo(*Settings.RIGHT_COLOR_BASE[:2])
         to = list(Settings.RIGHT_COLOR_BASE)
         self.moveTo(*to)
-
 
     def moveToPutPlace(self, color, down=0, up=0):
         pose = list(Settings.RIGHT_PUT_BASE)

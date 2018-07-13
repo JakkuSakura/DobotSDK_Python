@@ -2,6 +2,7 @@ import threading
 import time
 
 import DobotAPI
+import DobotTypes
 from DobotControl import DobotControl, find_color_index, color_exists
 
 
@@ -32,10 +33,10 @@ class Settings:
     BLOCK_SIZE = 26
     DobotAPI.Debug = False
 
-    MOTOR_PORT = DobotAPI.EMotorPort.EMOTOR_1
+    MOTOR_PORT = DobotTypes.EMotorPort.EMOTOR_1
     # MOVE_TIME = 1.5
-    # INFRARED_PORT = DobotAPI.InfraredPort.PORT_GP2
-    COLOR_PORT = DobotAPI.ColorPort.PORT_GP2
+    # INFRARED_PORT = DobotTypes.InfraredPort.PORT_GP2
+    COLOR_PORT = DobotTypes.ColorPort.PORT_GP2
 
     ENABLE_LEFT = True
 
