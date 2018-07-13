@@ -360,7 +360,7 @@ class DobotSession:
         SetLostStepParams(self.api, threshold, isQueued)
 
     def SetLostStepCmd(self, isQueued=1):
-        SetLostStepCmd(self.api, isQueued=1)
+        SetLostStepCmd(self.api, isQueued)
 
     # UART4 Peripherals
     def GetUART4PeripheralsType(self, p_type):
