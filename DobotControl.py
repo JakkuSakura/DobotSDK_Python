@@ -17,17 +17,17 @@ class DobotControl(Thread):
             DobotControl.first_init = False
         return DobotControl.searched
 
-    def __init__(self, index, COM):
+    def __init__(self, index, addr):
         super().__init__()
-        self.addr = COM
+        self.addr = addr
         self.connect_state = None
         self.dobot = DobotSession(index)
         self.dobot.SetCmdTimeout(100)
-        if COM not in DobotControl.search():
-            print("Cannot find port", COM)
+        if addr not in DobotControl.search():
+            print("Cannot find port", addr)
             return
-        self.connect_state = self.dobot.ConnectDobot(COM)[0]
-        print(COM, "Connect status:", DobotAPI.CONNECT_RESULT[self.connect_state])
+        self.connect_state = self.dobot.ConnectDobot(addr)[0]
+        print(addr, "Connect status:", DobotAPI.CONNECT_RESULT[self.connect_state])
 
     def user_init(self):
         pass
@@ -47,17 +47,22 @@ class DobotControl(Thread):
         self.unsuck()
         self.user_init()
 
-    def home(self, home_pose):
-        print("Homing", self.addr)
+    def reset_zero(self, home_pose):
+        if type(home_pose) == list:
+            home_pose = tuple(home_pose)
+        print("Resetting position", self.addr)
         self.moveTo(*home_pose)
         self.dobot.SetHOMEParams(*home_pose, 0, 1)
         self.dobot.SetHOMECmdEx(temp=0, isQueued=1)
 
     def run(self):
-        if not self.isOk():
-            return
-        self.init()
-        self.work()
+        try:
+            if not self.isOk():
+                return
+            self.init()
+            self.work()
+        finally:
+            self.clean()
 
     def clean(self):
         """
@@ -77,17 +82,19 @@ class DobotControl(Thread):
     def getDobot(self):
         return self.dobot
 
-    def moveTo(self, x=None, y=None, z=None, straight=False):
+    def moveTo(self, x=None, y=None, z=None, r=None, straight=False):
         nowPos = self.dobot.GetPose()
         x = x or nowPos[0]
         y = y or nowPos[1]
         z = z or nowPos[2]
+        r = r or nowPos[3]
         moveMode = DobotAPI.PTPMode.PTP_MOVL_XYZ_Mode if straight else DobotAPI.PTPMode.PTP_MOVJ_XYZ_Mode
+        print(self.addr, "move to", x, y, z, r)
         self.dobot.SetPTPCmdEx(moveMode, x, y, z, 0, 1)
 
-    def moveInc(self, dx=0, dy=0, dz=0, straight=False):
-        moveMode = DobotAPI.PTPMode.PTP_MOVL_XYZ_INC_Mode if straight else DobotAPI.PTPMode.PTP_MOVJ_XYZ_INC_Mode
-        self.dobot.SetPTPCmdEx(moveMode, dx, dy, dz, 0, 1)
+    def moveInc(self, dx=0, dy=0, dz=0, dr=0, straight=False):
+        nowPos = self.dobot.GetPose()
+        self.moveTo(nowPos[0] + dx, nowPos[1] + dy, nowPos[2] + dz, nowPos[3] + dr, straight)
 
     def moveSpt(self, x, y, z, spt_times):
         now = self.dobot.GetPose()
@@ -105,6 +112,21 @@ class DobotControl(Thread):
 
     def work(self):
         pass
+
+    def startMoto(self, port, speed):
+        vel = float(speed) * 282.94212105225836
+        self.dobot.SetEMotorEx(port, 1, int(vel), 1)
+
+    def startMotoS(self, port, distance, speed):
+        vel = float(speed) * 282.94212105225836
+        self.dobot.SetEMotorSEx(port, 1, int(vel), distance, 1)
+
+    def stopMoto(self, port):
+        self.dobot.SetEMotorEx(port, 0, 0, 1)
+
+    def reset_pose(self):
+        if self.dobot.SetLostStepCmd():
+            self.dobot.ResetPose(0, 0, 0)
 
 
 def color_exists(n):

@@ -40,12 +40,12 @@ def find(lst, a, default=-1):
 
 
 class Robot(DobotControl):
-    def __init__(self, index, COM):
-        super().__init__(index, COM)
+    def __init__(self, index, addr):
+        super().__init__(index, addr)
         self.counts = [0 for _ in range(4)]
         self.debug = False
         if Settings.HOME_INIT:
-            self.home(Settings.HOME_BASE)
+            self.reset_zero(Settings.HOME_BASE)
 
     def init(self, speed=600):
         super().init(speed)

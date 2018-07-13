@@ -5,10 +5,10 @@ from DobotControl import DobotControl
 
 
 class Left(DobotControl):
-    def __init__(self, index, COM):
-        super().__init__(index, COM)
+    def __init__(self, index, addr):
+        super().__init__(index, addr)
         if DualCarriers.Settings.HOME_INIT:
-            self.home(DualCarriers.Settings.HOME_BASE)
+            self.reset_zero(DualCarriers.Settings.HOME_BASE)
 
     def work(self):
         print("running left")

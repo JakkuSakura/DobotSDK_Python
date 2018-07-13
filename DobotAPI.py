@@ -1,4 +1,3 @@
-import ctypes
 import os
 import platform
 import shutil
@@ -455,11 +454,7 @@ class ZDFCalibStatus:
     ZDFCalibFinished = 1
 
 
-"""
-WIFI
-JoMar 
-20160906
-"""
+# WIFI
 
 
 class WIFIIPAddress(Structure):
@@ -503,6 +498,72 @@ class WIFIDNS(Structure):
     ]
 
 
+class FirmwareSwitchMode:
+    NO_SWITCH = 0,
+    DOBOT_SWITCH = 1
+    PRINTING_SWITCH = 2
+    DRIVER1_SWITCH = 3
+    DRIVER2_SWITCH = 4
+    DRIVER3_SWITCH = 5
+    DRIVER4_SWITCH = 6
+    DRIVER5_SWITCH = 7
+
+
+class FirmwareParams(Structure):
+    _pack_ = 1
+    _fields_ = [
+        ("mode", c_uint8)
+    ]
+
+
+class FirewareMode:
+    INVALID_MODE = 0
+    DOBOT_MODE = 1
+    PRINTING_MODE = 2
+    OFFLINE_MODE = 3
+
+
+class UART4PeripheralsType:
+    UART4PeripheralsUART = 0
+    UART4PeripheralsWIFI = 1
+    UART4PeripheralsBLE = 2
+    UART4PeripheralsCH375 = 3
+
+
+class PluseCmd:
+    _pack_ = 1
+    _fields_ = [
+        ("j1", c_float),
+        ("j2", c_float),
+        ("j3", c_float),
+        ("j4", c_float),
+        ("e1", c_float),
+        ("e2", c_float)
+    ]
+
+
+class PIDParams(Structure):
+    _pack_ = 1
+    _fields_ = [
+        ("p", c_float),
+        ("i", c_float),
+        ("d", c_float),
+        ("v", c_float),
+        ("a", c_float)
+    ]
+
+
+class PID(Structure):
+    _pack_ = 1
+    _fields_ = [
+        ("index", c_uint8),
+        ("controlLoop", c_uint8),
+        ("params", PIDParams),
+
+    ]
+
+
+# PORTS
 class PortGp:
     PORT_GP1 = 0
     PORT_GP2 = 1
@@ -1710,6 +1771,52 @@ def GetIOADC(api, addr):
     return [param.value]
 
 
+def SetColorSensor(api, isEnable, colorPort):
+    enable = c_bool(isEnable)
+    while True:
+        result = api.SetColorSensor(enable, colorPort)
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+
+
+def GetColorSensor(api):
+    r = c_ubyte(0)
+    g = c_ubyte(0)
+    b = c_ubyte(0)
+    while True:
+        result = api.GetColorSensor(byref(r), byref(g), byref(b))
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+    color = (r.value, g.value, b.value)
+    output("got color sensor", color)
+    return color
+
+
+def SetInfraredSensor(api, isEnable, infraredPort):
+    enable = c_bool(isEnable)
+    while True:
+        result = api.SetInfraredSensor(enable, infraredPort)
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+
+
+def GetInfraredSensor(api, infraredPort):
+    val = c_ubyte(0)
+    while True:
+        result = api.GetInfraredSensor(infraredPort, byref(val))
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+    return val.value
+
+
 def SetAngleSensorStaticError(api, rearArmAngleError, frontArmAngleError):
     c_rearArmAngleError = c_float(rearArmAngleError)
     c_frontArmAngleError = c_float(frontArmAngleError)
@@ -1782,11 +1889,7 @@ def GetBaseDecoderStaticError(api):
     return [baseDecoderError.value]
 
 
-"""
-WIFI
-JoMar 
-20160906
-"""
+# WIFI
 
 
 def GetWIFIConnectStatus(api):
@@ -1982,50 +2085,161 @@ def GetWIFIDNS(api):
             c_uint8(wifiDNS.addr4).value]
 
 
-def SetColorSensor(api, isEnable, colorPort):
+# FIRMWARE
+def UpdateFirmware(api, firmwareParams: FirmwareParams):
+    while True:
+        result = api.UpdateFirmware(byref(firmwareParams))
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+
+
+def SetFirmwareMode(api, firmwareMode):
+    firmwareMode = c_uint(firmwareMode)
+    while True:
+        result = api.SetFirmwareMode(byref(firmwareMode))
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+
+
+def GetFirmwareMode(api):
+    firmwareMode = c_uint(0)
+    result = api.GetFirmwareMode(byref(firmwareMode))
+    return [firmwareMode, result]
+
+
+# LOSTSTEP
+def SetLostStepParams(api, threshold, isQueued=0):
+    threshold = c_float(threshold)
+    queuedCmdIndex = c_uint64(0)
+    while True:
+        result = api.SetAutoLevelingCmd(threshold, isQueued, byref(queuedCmdIndex))
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+    return [queuedCmdIndex.value]
+
+
+def SetLostStepCmd(api, isQueued=1):
+    queuedCmdIndex = c_uint64(0)
+    while True:
+        result = api.SetLostStepCmd(isQueued, byref(queuedCmdIndex))
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+    return [queuedCmdIndex.value]
+
+
+# UART4 Peripherals
+def GetUART4PeripheralsType(api, p_type):
+    m_type = c_uint8(p_type)
+    queuedCmdIndex = c_uint64(0)
+
+    result = api.GetUART4PeripheralsType(byref(m_type), byref(queuedCmdIndex))
+
+    return [m_type, result]
+
+
+def SetUART4PeripheralsEnable(api, isEnable):
     enable = c_bool(isEnable)
+    return api.SetUART4PeripheralsEnable(enable)
+
+
+def GetUART4PeripheralsEnable(api):
+    isEnable = c_bool()
+    result = api.GetUART4PeripheralsEnable(byref(isEnable))
+    return [isEnable, result]
+
+
+# Function Pluse Mode
+def SendPluse(api, pluseCmd: PluseCmd, isQueued=0):
+    queuedCmdIndex = c_uint64(0)
     while True:
-        result = api.SetColorSensor(enable, colorPort)
+        result = api.SendPluse(byref(pluseCmd), isQueued, byref(queuedCmdIndex))
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+    return [queuedCmdIndex.value]
+
+
+def SendPluseEx(api, pluseCmd):
+    result = api.SendPluseEx(byref(pluseCmd))
+    return result
+
+
+def GetPTPTime(api, ptpCmd: PTPCmd, ptpTime):
+    m_ptpTime = c_uint32(ptpTime)
+    while True:
+        result = api.GetFirmwareMode(byref(ptpCmd), byref(m_ptpTime))
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+    return m_ptpTime
+
+
+def GetServoPIDParams(api):
+    pid = PID()
+    while True:
+        result = api.GetFirmwareMode(byref(pid))
+        if result != DobotCommunicate.DobotCommunicate_Successfully:
+            dSleep(5)
+            continue
+        break
+    return pid
+
+
+def SetServoPIDParams(api, pid: PID, isQueued=0):
+    queuedCmdIndex = c_uint64(0)
+    while True:
+        result = api.SetServoPIDParams(byref(pid), isQueued, byref(queuedCmdIndex))
         if result != DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
 
 
-def GetColorSensor(api):
-    r = c_ubyte(0)
-    g = c_ubyte(0)
-    b = c_ubyte(0)
+def GetServoControlLoop(api):
+    m_index = c_uint8()
+    controlLoop = c_uint8()
     while True:
-        result = api.GetColorSensor(byref(r), byref(g), byref(b))
+        result = api.GetServoControlLoop(m_index, byref(controlLoop))
         if result != DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
-    color = (r.value, g.value, b.value)
-    output("got color sensor", color)
-    return color
+    return [m_index, controlLoop]
 
 
-def SetInfraredSensor(api, isEnable, infraredPort):
-    enable = c_bool(isEnable)
+def SetServoControlLoop(api, p_index, controlLoop, isQueued=0):
+    m_index = c_uint8(p_index)
+    controlLoop = c_uint8(controlLoop)
+    queuedCmdIndex = c_uint64(0)
+
     while True:
-        result = api.SetInfraredSensor(enable, infraredPort)
+        result = api.SetServoControlLoop(m_index, controlLoop, isQueued, byref(queuedCmdIndex))
         if result != DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
 
+def SaveServoPIDParams(api, p_index, controlLoop, isQueued=0):
+    m_index = c_uint8(p_index)
+    controlLoop = c_uint8(controlLoop)
+    queuedCmdIndex = c_uint64(0)
 
-def GetInfraredSensor(api, infraredPort):
-    val = c_ubyte(0)
     while True:
-        result = api.GetInfraredSensor(infraredPort, byref(val))
+        result = api.SaveServoPIDParams(m_index, controlLoop, isQueued, byref(queuedCmdIndex))
         if result != DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
-    return val.value
 
 
 ##################  Ex扩展函数，该套函数会检测每一条指令运行完毕  ##################
