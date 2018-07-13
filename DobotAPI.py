@@ -1,3 +1,4 @@
+import ctypes
 import os
 import platform
 import shutil
@@ -565,7 +566,7 @@ def os_bits():
     return machine2bits.get(machine, None)
 
 
-pre_path = platform.system() + '/x' + str(os_bits()) + '/'
+pre_path = './' + platform.system() + '/x' + str(os_bits()) + '/'
 
 
 def load(dobotId=0, split="_"):
@@ -585,7 +586,7 @@ def load(dobotId=0, split="_"):
         return CDLL(require, RTLD_GLOBAL)
     else:  # linux
         require = getRequiredPath("libDobotDll.so")
-        return cdll.loadLibrary(require)
+        return CDLL(require)
 
 
 def dSleep(ms):

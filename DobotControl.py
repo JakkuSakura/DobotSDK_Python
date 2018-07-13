@@ -3,6 +3,7 @@ from threading import Thread
 import DobotAPI
 from DobotSession import DobotSession
 
+
 class DobotControl(Thread):
     first_init = True
     root_session = DobotSession('', '')
@@ -115,3 +116,11 @@ def color_exists(n):
                 return True
         else:
             return False
+
+
+def find_color_index(lst, default=-1):
+    for i in range(len(lst)):
+        if color_exists(lst[i]):
+            return i
+    else:
+        return default
