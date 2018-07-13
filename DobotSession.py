@@ -345,6 +345,52 @@ class DobotSession:
     def GetInfraredSensor(self, infraredPort):
         return GetInfraredSensor(self.api, infraredPort)
 
+    # FIRMWARE
+    def UpdateFirmware(self, firmwareParams: FirmwareParams):
+        UpdateFirmware(self.api, firmwareParams)
+
+    def SetFirmwareMode(self, firmwareMode):
+        SetFirmwareMode(self.api, firmwareMode)
+
+    def GetFirmwareMode(self):
+        GetFirmwareMode(self.api)
+
+    # LOSTSTEP
+    def SetLostStepParams(self, threshold, isQueued=0):
+        SetLostStepParams(self.api, threshold, isQueued)
+
+    def SetLostStepCmd(self, isQueued=1):
+        SetLostStepCmd(self.api, isQueued=1)
+
+    # UART4 Peripherals
+    def GetUART4PeripheralsType(self, p_type):
+        GetUART4PeripheralsType(self.api, p_type)
+
+    def SetUART4PeripheralsEnable(self, isEnable):
+        SetUART4PeripheralsEnable(self.api, isEnable)
+
+    # Function Pluse Mode
+    def SendPluse(self, pluseCmd: PluseCmd, isQueued=0):
+        SendPluse(self.api, pluseCmd, isQueued)
+
+    def SendPluseEx(self, pluseCmd):
+        SendPluseEx(self.api, pluseCmd)
+
+    def GetServoPIDParams(self):
+        GetServoPIDParams(self.api)
+
+    def SetServoPIDParams(self, pid: PID, isQueued=0):
+        SetServoPIDParams(self.api, pid, isQueued)
+
+    def GetServoControlLoop(self):
+        GetServoControlLoop(self.api)
+
+    def SetServoControlLoop(self, p_index, controlLoop, isQueued=0):
+        SetServoControlLoop(self.api, p_index, controlLoop, isQueued)
+
+    def SaveServoPIDParams(self, p_index, controlLoop, isQueued=0):
+        SaveServoPIDParams(self.api, p_index, controlLoop, isQueued)
+
     def GetPoseEx(self, index):
         return GetPoseEx(self.api, index)
 
