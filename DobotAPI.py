@@ -4,10 +4,9 @@ import shutil
 import sys
 import time
 from ctypes import *
-
 from typing import List
 
-from DobotTypes import *
+import DobotTypes
 
 
 ##################  API func   ##################
@@ -60,11 +59,11 @@ def gettime():
     return time.time()
 
 
-Debug = True
+OutPutFlag = True
 
 
 def output(*args, **kargs):
-    if not Debug:
+    if not OutPutFlag:
         return
     print(*args, **kargs)
     sys.stdout.flush()
@@ -85,16 +84,12 @@ def ConnectDobot(api, portName="", baudrate=115200):
     fwType = create_string_buffer(100)
     version = create_string_buffer(100)
     result = api.ConnectDobot(szPara, baudrate, fwType, version)
-    return [result, fwType.value.decode("utf-8"), version.value.decode("utf-8")]
+    return result, fwType.value.decode("utf-8"), version.value.decode("utf-8")
 
 
 def DisconnectDobot(api):
     output("Disconnect Dobot")
     api.DisconnectDobot()
-
-
-def SetCmdTimeout(api, times):
-    api.SetCmdTimeout(times)
 
 
 def DobotExec(api):
@@ -116,7 +111,7 @@ def SetAutoLevelingCmd(api, controlFlag, precision, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetAutoLevelingCmd(byref(cmd), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -127,7 +122,7 @@ def GetAutoLevelingResult(api):
     precision = c_float(0)
     while True:
         result = api.GetAutoLevelingResult(byref(precision))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -140,7 +135,7 @@ def GetQueuedCmdCurrentIndex(api):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.GetQueuedCmdCurrentIndex(byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(2)
             continue
         break
@@ -150,7 +145,7 @@ def GetQueuedCmdCurrentIndex(api):
 def SetQueuedCmdStartExec(api):
     while True:
         result = api.SetQueuedCmdStartExec()
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -159,7 +154,7 @@ def SetQueuedCmdStartExec(api):
 def SetQueuedCmdStopExec(api):
     while True:
         result = api.SetQueuedCmdStopExec()
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -169,7 +164,7 @@ def SetQueuedCmdStopExec(api):
 def SetQueuedCmdForceStopExec(api):
     while True:
         result = api.SetQueuedCmdForceStopExec()
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -180,7 +175,7 @@ def SetQueuedCmdForceStopExec(api):
 def SetQueuedCmdStartDownload(api, totalLoop, linePerLoop):
     while True:
         result = api.SetQueuedCmdStartDownload(totalLoop, linePerLoop)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -189,7 +184,7 @@ def SetQueuedCmdStartDownload(api, totalLoop, linePerLoop):
 def SetQueuedCmdStopDownload(api):
     while True:
         result = api.SetQueuedCmdStopDownload()
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -204,7 +199,7 @@ def SetDeviceSN(api, str_):
     szPara.raw = str_.encode("utf-8")
     while True:
         result = api.SetDeviceSN(szPara)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -214,7 +209,7 @@ def GetDeviceSN(api):
     szPara = create_string_buffer(25)
     while True:
         result = api.GetDeviceSN(szPara, 25)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -228,7 +223,7 @@ def SetDeviceName(api, str_):
     szPara.raw = str_.encode("utf-8")
     while True:
         result = api.SetDeviceName(szPara)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -238,7 +233,7 @@ def GetDeviceName(api):
     szPara = create_string_buffer(66)
     while True:
         result = api.GetDeviceName(szPara, 100)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -247,13 +242,13 @@ def GetDeviceName(api):
     return ret
 
 
-def GetDeviceVersion(api):
+def GetDeviceVersion(api) -> List[int]:
     majorVersion = c_byte(0)
     minorVersion = c_byte(0)
     revision = c_byte(0)
     while True:
         result = api.GetDeviceVersion(byref(majorVersion), byref(minorVersion), byref(revision))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -265,7 +260,7 @@ def SetDeviceWithL(api, isWithL):
     cIsWithL = c_bool(isWithL)
     while True:
         result = api.SetDeviceWithL(cIsWithL)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -275,7 +270,7 @@ def GetDeviceWithL(api):
     isWithL = c_bool(False)
     while True:
         result = api.GetDeviceWithL(byref(isWithL))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -287,17 +282,17 @@ def ResetPose(api, manual, rearArmAngle, frontArmAngle):
     c_frontArmAngle = c_float(frontArmAngle)
     while True:
         result = api.ResetPose(manual, c_rearArmAngle, c_frontArmAngle)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
 
 
 def GetPose(api) -> List[float]:
-    pose = Pose()
+    pose = DobotTypes.Pose()
     while True:
         result = api.GetPose(byref(pose))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -310,7 +305,7 @@ def GetPoseL(api):
     l = c_float(0)
     while True:
         result = api.GetPoseL(byref(l))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -318,10 +313,10 @@ def GetPoseL(api):
 
 
 def GetKinematics(api):
-    kinematics = Kinematics()
+    kinematics = DobotTypes.Kinematics()
     while True:
         result = api.GetKinematics(byref(kinematics))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -335,7 +330,7 @@ def GetAlarmsState(api, maxLen=1000):
     length = c_int(0)
     while True:
         result = api.GetAlarmsState(alarmsState, byref(length), maxLen)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -346,17 +341,17 @@ def GetAlarmsState(api, maxLen=1000):
 def ClearAllAlarmsState(api):
     while True:
         result = api.ClearAllAlarmsState()
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
 
 
 def GetUserParams(api):
-    param = UserParams()
+    param = DobotTypes.UserParams()
     while True:
         result = api.GetUserParams(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -368,7 +363,7 @@ def GetUserParams(api):
 
 
 def SetHOMEParams(api, x, y, z, r, isQueued=0):
-    param = HOMEParams()
+    param = DobotTypes.HOMEParams()
     param.x = x
     param.y = y
     param.z = z
@@ -376,7 +371,7 @@ def SetHOMEParams(api, x, y, z, r, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetHOMEParams(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -384,10 +379,10 @@ def SetHOMEParams(api, x, y, z, r, isQueued=0):
 
 
 def GetHOMEParams(api):
-    param = HOMEParams()
+    param = DobotTypes.HOMEParams()
     while True:
         result = api.GetHOMEParams(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -396,12 +391,12 @@ def GetHOMEParams(api):
 
 
 def SetHOMECmd(api, temp, isQueued=0):
-    cmd = HOMECmd()
+    cmd = DobotTypes.HOMECmd()
     cmd.temp = temp
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetHOMECmd(byref(cmd), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -412,7 +407,7 @@ def SetArmOrientation(api, armOrientation, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetArmOrientation(armOrientation, isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -423,7 +418,7 @@ def GetArmOrientation(api):
     armOrientation = c_int32(0)
     while True:
         result = api.GetArmOrientation(byref(armOrientation))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -434,7 +429,7 @@ def GetArmOrientation(api):
 def SetHHTTrigMode(api, hhtTrigMode):
     while True:
         result = api.SetHHTTrigMode(hhtTrigMode)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -444,7 +439,7 @@ def GetHHTTrigMode(api):
     hhtTrigMode = c_int(0)
     while True:
         result = api.GetHHTTrigMode(byref(hhtTrigMode))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -454,7 +449,7 @@ def GetHHTTrigMode(api):
 def SetHHTTrigOutputEnabled(api, isEnabled):
     while True:
         result = api.SetHHTTrigOutputEnabled(isEnabled)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -464,7 +459,7 @@ def GetHHTTrigOutputEnabled(api):
     isEnabled = c_int32(0)
     while True:
         result = api.GetHHTTrigOutputEnabled(byref(isEnabled))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -474,20 +469,20 @@ def GetHHTTrigOutputEnabled(api):
 def GetHHTTrigOutput(api):
     isAvailable = c_int32(0)
     result = api.GetHHTTrigOutput(byref(isAvailable))
-    if result != DobotCommunicate.DobotCommunicate_Successfully or isAvailable.value == 0:
+    if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully or isAvailable.value == 0:
         return False
     return True
 
 
 def SetEndEffectorParams(api, xBias, yBias, zBias, isQueued=0):
-    param = EndTypeParams()
+    param = DobotTypes.EndTypeParams()
     param.xBias = xBias
     param.yBias = yBias
     param.zBias = zBias
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetEndEffectorParams(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -495,10 +490,10 @@ def SetEndEffectorParams(api, xBias, yBias, zBias, isQueued=0):
 
 
 def GetEndEffectorParams(api):
-    param = EndTypeParams()
+    param = DobotTypes.EndTypeParams()
     while True:
         result = api.GetEndEffectorParams(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -510,7 +505,7 @@ def SetEndEffectorLaser(api, enableCtrl, on, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetEndEffectorLaser(enableCtrl, on, isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -522,7 +517,7 @@ def GetEndEffectorLaser(api):
     isOn = c_int(0)
     while True:
         result = api.GetEndEffectorLaser(byref(isCtrlEnabled), byref(isOn))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -534,7 +529,7 @@ def SetEndEffectorSuctionCup(api, enableCtrl, mode, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetEndEffectorSuctionCup(enableCtrl, mode, isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -546,7 +541,7 @@ def GetEndEffectorSuctionCup(api):
     isOn = c_int(0)
     while True:
         result = api.GetEndEffectorSuctionCup(byref(enableCtrl), byref(isOn))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -558,7 +553,7 @@ def SetEndEffectorGripper(api, enableCtrl, on, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetEndEffectorGripper(enableCtrl, on, isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -570,7 +565,7 @@ def GetEndEffectorGripper(api):
     isOn = c_int(0)
     while True:
         result = api.GetEndEffectorGripper(byref(enableCtrl), byref(isOn))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -580,7 +575,7 @@ def GetEndEffectorGripper(api):
 
 def SetJOGJointParams(api, j1Velocity, j1Acceleration, j2Velocity, j2Acceleration, j3Velocity, j3Acceleration,
                       j4Velocity, j4Acceleration, isQueued=0):
-    jogParam = JOGJointParams()
+    jogParam = DobotTypes.JOGJointParams()
     jogParam.joint1Velocity = j1Velocity
     jogParam.joint1Acceleration = j1Acceleration
     jogParam.joint2Velocity = j2Velocity
@@ -592,7 +587,7 @@ def SetJOGJointParams(api, j1Velocity, j1Acceleration, j2Velocity, j2Acceleratio
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetJOGJointParams(byref(jogParam), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -600,10 +595,10 @@ def SetJOGJointParams(api, j1Velocity, j1Acceleration, j2Velocity, j2Acceleratio
 
 
 def GetJOGJointParams(api):
-    param = JOGJointParams()
+    param = DobotTypes.JOGJointParams()
     while True:
         result = api.GetJOGJointParams(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -616,7 +611,7 @@ def GetJOGJointParams(api):
 
 def SetJOGCoordinateParams(api, xVelocity, xAcceleration, yVelocity, yAcceleration, zVelocity, zAcceleration, rVelocity,
                            rAcceleration, isQueued=0):
-    param = JOGCoordinateParams()
+    param = DobotTypes.JOGCoordinateParams()
     param.xVelocity = xVelocity
     param.xAcceleration = xAcceleration
     param.yVelocity = yVelocity
@@ -628,7 +623,7 @@ def SetJOGCoordinateParams(api, xVelocity, xAcceleration, yVelocity, yAccelerati
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetJOGCoordinateParams(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -636,10 +631,10 @@ def SetJOGCoordinateParams(api, xVelocity, xAcceleration, yVelocity, yAccelerati
 
 
 def GetJOGCoordinateParams(api):
-    param = JOGCoordinateParams()
+    param = DobotTypes.JOGCoordinateParams()
     while True:
         result = api.GetJOGCoordinateParams(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -651,13 +646,13 @@ def GetJOGCoordinateParams(api):
 
 
 def SetJOGLParams(api, velocity, acceleration, isQueued=0):
-    param = JOGLParams()
+    param = DobotTypes.JOGLParams()
     param.velocity = velocity
     param.acceleration = acceleration
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetJOGLParams(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -665,10 +660,10 @@ def SetJOGLParams(api, velocity, acceleration, isQueued=0):
 
 
 def GetJOGLParams(api):
-    param = JOGLParams()
+    param = DobotTypes.JOGLParams()
     while True:
         result = api.GetJOGLParams(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -676,13 +671,13 @@ def GetJOGLParams(api):
 
 
 def SetJOGCommonParams(api, value_velocityratio, value_accelerationratio, isQueued=0):
-    param = JOGCommonParams()
+    param = DobotTypes.JOGCommonParams()
     param.velocityRatio = value_velocityratio
     param.accelerationRatio = value_accelerationratio
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetJOGCommonParams(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -690,10 +685,10 @@ def SetJOGCommonParams(api, value_velocityratio, value_accelerationratio, isQueu
 
 
 def GetJOGCommonParams(api):
-    param = JOGCommonParams()
+    param = DobotTypes.JOGCommonParams()
     while True:
         result = api.GetJOGCommonParams(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -703,13 +698,13 @@ def GetJOGCommonParams(api):
 
 
 def SetJOGCmd(api, isJoint, cmd, isQueued=0):
-    cmdParam = JOGCmd()
+    cmdParam = DobotTypes.JOGCmd()
     cmdParam.isJoint = isJoint
     cmdParam.cmd = cmd
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetJOGCmd(byref(cmdParam), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -718,7 +713,7 @@ def SetJOGCmd(api, isJoint, cmd, isQueued=0):
 
 def SetPTPJointParams(api, j1Velocity, j1Acceleration, j2Velocity, j2Acceleration, j3Velocity, j3Acceleration,
                       j4Velocity, j4Acceleration, isQueued=0):
-    pbParam = PTPJointParams()
+    pbParam = DobotTypes.PTPJointParams()
     pbParam.joint1Velocity = j1Velocity
     pbParam.joint1Acceleration = j1Acceleration
     pbParam.joint2Velocity = j2Velocity
@@ -730,7 +725,7 @@ def SetPTPJointParams(api, j1Velocity, j1Acceleration, j2Velocity, j2Acceleratio
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetPTPJointParams(byref(pbParam), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -738,10 +733,10 @@ def SetPTPJointParams(api, j1Velocity, j1Acceleration, j2Velocity, j2Acceleratio
 
 
 def GetPTPJointParams(api):
-    pbParam = PTPJointParams()
+    pbParam = DobotTypes.PTPJointParams()
     while True:
         result = api.GetPTPJointParams(byref(pbParam))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -753,7 +748,7 @@ def GetPTPJointParams(api):
 
 
 def SetPTPCoordinateParams(api, xyzVelocity, xyzAcceleration, rVelocity, rAcceleration, isQueued=0):
-    pbParam = PTPCoordinateParams()
+    pbParam = DobotTypes.PTPCoordinateParams()
     pbParam.xyzVelocity = xyzVelocity
     pbParam.rVelocity = rVelocity
     pbParam.xyzAcceleration = xyzAcceleration
@@ -761,7 +756,7 @@ def SetPTPCoordinateParams(api, xyzVelocity, xyzAcceleration, rVelocity, rAccele
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetPTPCoordinateParams(byref(pbParam), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -769,10 +764,10 @@ def SetPTPCoordinateParams(api, xyzVelocity, xyzAcceleration, rVelocity, rAccele
 
 
 def GetPTPCoordinateParams(api):
-    pbParam = PTPCoordinateParams()
+    pbParam = DobotTypes.PTPCoordinateParams()
     while True:
         result = api.GetPTPCoordinateParams(byref(pbParam))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -782,13 +777,13 @@ def GetPTPCoordinateParams(api):
 
 
 def SetPTPLParams(api, velocity, acceleration, isQueued=0):
-    param = PTPLParams()
+    param = DobotTypes.PTPLParams()
     param.velocity = velocity
     param.acceleration = acceleration
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetPTPLParams(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -796,10 +791,10 @@ def SetPTPLParams(api, velocity, acceleration, isQueued=0):
 
 
 def GetPTPLParams(api):
-    param = PTPLParams()
+    param = DobotTypes.PTPLParams()
     while True:
         result = api.GetPTPLParams(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -807,13 +802,13 @@ def GetPTPLParams(api):
 
 
 def SetPTPJumpParams(api, jumpHeight, zLimit, isQueued=0):
-    pbParam = PTPJumpParams()
+    pbParam = DobotTypes.PTPJumpParams()
     pbParam.jumpHeight = jumpHeight
     pbParam.zLimit = zLimit
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetPTPJumpParams(byref(pbParam), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -821,10 +816,10 @@ def SetPTPJumpParams(api, jumpHeight, zLimit, isQueued=0):
 
 
 def GetPTPJumpParams(api):
-    pbParam = PTPJumpParams()
+    pbParam = DobotTypes.PTPJumpParams()
     while True:
         result = api.GetPTPJumpParams(byref(pbParam))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -833,13 +828,13 @@ def GetPTPJumpParams(api):
 
 
 def SetPTPCommonParams(api, velocityRatio, accelerationRatio, isQueued=0):
-    pbParam = PTPCommonParams()
+    pbParam = DobotTypes.PTPCommonParams()
     pbParam.velocityRatio = velocityRatio
     pbParam.accelerationRatio = accelerationRatio
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetPTPCommonParams(byref(pbParam), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -847,10 +842,10 @@ def SetPTPCommonParams(api, velocityRatio, accelerationRatio, isQueued=0):
 
 
 def GetPTPCommonParams(api):
-    pbParam = PTPCommonParams()
+    pbParam = DobotTypes.PTPCommonParams()
     while True:
         result = api.GetPTPCommonParams(byref(pbParam))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -860,7 +855,7 @@ def GetPTPCommonParams(api):
 
 
 def SetPTPCmd(api, ptpMode, x, y, z, rHead, isQueued=0):
-    cmd = PTPCmd()
+    cmd = DobotTypes.PTPCmd()
     cmd.ptpMode = ptpMode
     cmd.x = x
     cmd.y = y
@@ -869,7 +864,7 @@ def SetPTPCmd(api, ptpMode, x, y, z, rHead, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetPTPCmd(byref(cmd), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(2)
             continue
         break
@@ -877,7 +872,7 @@ def SetPTPCmd(api, ptpMode, x, y, z, rHead, isQueued=0):
 
 
 def SetPTPWithLCmd(api, ptpMode, x, y, z, rHead, l, isQueued=0):
-    cmd = PTPWithLCmd()
+    cmd = DobotTypes.PTPWithLCmd()
     cmd.ptpMode = ptpMode
     cmd.x = x
     cmd.y = y
@@ -887,7 +882,7 @@ def SetPTPWithLCmd(api, ptpMode, x, y, z, rHead, l, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetPTPWithLCmd(byref(cmd), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(2)
             continue
         break
@@ -895,7 +890,7 @@ def SetPTPWithLCmd(api, ptpMode, x, y, z, rHead, l, isQueued=0):
 
 
 def SetCPParams(api, planAcc, juncitionVel, acc, realTimeTrack=0, isQueued=0):
-    parm = CPParams()
+    parm = DobotTypes.CPParams()
     parm.planAcc = planAcc
     parm.juncitionVel = juncitionVel
     parm.acc = acc
@@ -903,7 +898,7 @@ def SetCPParams(api, planAcc, juncitionVel, acc, realTimeTrack=0, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetCPParams(byref(parm), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -911,10 +906,10 @@ def SetCPParams(api, planAcc, juncitionVel, acc, realTimeTrack=0, isQueued=0):
 
 
 def GetCPParams(api):
-    parm = CPParams()
+    parm = DobotTypes.CPParams()
     while True:
         result = api.GetCPParams(byref(parm))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -923,7 +918,7 @@ def GetCPParams(api):
 
 
 def SetCPCmd(api, cpMode, x, y, z, velocity, isQueued=0):
-    cmd = CPCmd()
+    cmd = DobotTypes.CPCmd()
     cmd.cpMode = cpMode
     cmd.x = x
     cmd.y = y
@@ -932,7 +927,7 @@ def SetCPCmd(api, cpMode, x, y, z, velocity, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetCPCmd(byref(cmd), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(2)
             continue
         break
@@ -940,7 +935,7 @@ def SetCPCmd(api, cpMode, x, y, z, velocity, isQueued=0):
 
 
 def SetCPLECmd(api, cpMode, x, y, z, power, isQueued=0):
-    cmd = CPCmd()
+    cmd = DobotTypes.CPCmd()
     cmd.cpMode = cpMode
     cmd.x = x
     cmd.y = y
@@ -949,7 +944,7 @@ def SetCPLECmd(api, cpMode, x, y, z, power, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetCPLECmd(byref(cmd), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(2)
             continue
         break
@@ -957,7 +952,7 @@ def SetCPLECmd(api, cpMode, x, y, z, power, isQueued=0):
 
 
 def SetARCParams(api, xyzVelocity, rVelocity, xyzAcceleration, rAcceleration, isQueued=0):
-    param = ARCParams()
+    param = DobotTypes.ARCParams()
     param.xyzVelocity = xyzVelocity
     param.rVelocity = rVelocity
     param.xyzAcceleration = xyzAcceleration
@@ -965,7 +960,7 @@ def SetARCParams(api, xyzVelocity, rVelocity, xyzAcceleration, rAcceleration, is
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetARCParams(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -973,10 +968,10 @@ def SetARCParams(api, xyzVelocity, rVelocity, xyzAcceleration, rAcceleration, is
 
 
 def GetARCParams(api):
-    parm = ARCParams()
+    parm = DobotTypes.ARCParams()
     while True:
         result = api.GetARCParams(byref(parm))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -986,7 +981,7 @@ def GetARCParams(api):
 
 
 def SetARCCmd(api, cirPoint, toPoint, isQueued=0):
-    cmd = ARCCmd()
+    cmd = DobotTypes.ARCCmd()
     cmd.cirPoint.x = cirPoint[0]
     cmd.cirPoint.y = cirPoint[1]
     cmd.cirPoint.z = cirPoint[2]
@@ -998,7 +993,7 @@ def SetARCCmd(api, cirPoint, toPoint, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetARCCmd(byref(cmd), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1006,12 +1001,12 @@ def SetARCCmd(api, cirPoint, toPoint, isQueued=0):
 
 
 def SetWAITCmd(api, waitTimeMs, isQueued=1):
-    param = WAITCmd()
+    param = DobotTypes.WAITCmd()
     param.waitTime = waitTimeMs
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetWAITCmd(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(10)
             continue
         break
@@ -1019,7 +1014,7 @@ def SetWAITCmd(api, waitTimeMs, isQueued=1):
 
 
 def SetTRIGCmd(api, address, mode, condition, threshold, isQueued=0):
-    param = TRIGCmd()
+    param = DobotTypes.TRIGCmd()
     param.address = address
     param.mode = mode
     param.condition = condition
@@ -1027,7 +1022,7 @@ def SetTRIGCmd(api, address, mode, condition, threshold, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetTRIGCmd(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1035,13 +1030,13 @@ def SetTRIGCmd(api, address, mode, condition, threshold, isQueued=0):
 
 
 def SetIOMultiplexing(api, address, multiplex, isQueued=0):
-    param = IOMultiplexing()
+    param = DobotTypes.IOMultiplexing()
     param.address = address
     param.multiplex = multiplex
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetIOMultiplexing(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1049,11 +1044,11 @@ def SetIOMultiplexing(api, address, multiplex, isQueued=0):
 
 
 def GetIOMultiplexing(api, addr):
-    param = IOMultiplexing()
+    param = DobotTypes.IOMultiplexing()
     param.address = addr
     while True:
         result = api.GetIOMultiplexing(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1062,13 +1057,13 @@ def GetIOMultiplexing(api, addr):
 
 
 def SetIODO(api, address, level, isQueued=0):
-    param = IODO()
+    param = DobotTypes.IODO()
     param.address = address
     param.level = level
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetIODO(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1076,11 +1071,11 @@ def SetIODO(api, address, level, isQueued=0):
 
 
 def GetIODO(api, addr):
-    param = IODO()
+    param = DobotTypes.IODO()
     param.address = addr
     while True:
         result = api.GetIODO(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1089,14 +1084,14 @@ def GetIODO(api, addr):
 
 
 def SetIOPWM(api, address, frequency, dutyCycle, isQueued=0):
-    param = IOPWM()
+    param = DobotTypes.IOPWM()
     param.address = address
     param.frequency = frequency
     param.dutyCycle = dutyCycle
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetIOPWM(byref(param), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1104,11 +1099,11 @@ def SetIOPWM(api, address, frequency, dutyCycle, isQueued=0):
 
 
 def GetIOPWM(api, addr):
-    param = IOPWM()
+    param = DobotTypes.IOPWM()
     param.address = addr
     while True:
         result = api.GetIOPWM(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1117,11 +1112,11 @@ def GetIOPWM(api, addr):
 
 
 def GetIODI(api, addr):
-    param = IODI()
+    param = DobotTypes.IODI()
     param.address = addr
     while True:
         result = api.GetIODI(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1130,14 +1125,14 @@ def GetIODI(api, addr):
 
 
 def SetEMotor(api, index, isEnabled, speed, isQueued=0):
-    emotor = EMotor()
+    emotor = DobotTypes.EMotor()
     emotor.index = index
     emotor.isEnabled = isEnabled
     emotor.speed = speed
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetEMotor(byref(emotor), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1145,7 +1140,7 @@ def SetEMotor(api, index, isEnabled, speed, isQueued=0):
 
 
 def SetEMotorS(api, index, isEnabled, speed, distance, isQueued=0):
-    emotors = EMotorS()
+    emotors = DobotTypes.EMotorS()
     emotors.index = index
     emotors.isEnabled = isEnabled
     emotors.distance = distance
@@ -1153,7 +1148,7 @@ def SetEMotorS(api, index, isEnabled, speed, distance, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetEMotorS(byref(emotors), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1161,11 +1156,11 @@ def SetEMotorS(api, index, isEnabled, speed, distance, isQueued=0):
 
 
 def GetIOADC(api, addr):
-    param = IOADC()
+    param = DobotTypes.IOADC()
     param.address = addr
     while True:
         result = api.GetIOADC(byref(param))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1177,7 +1172,7 @@ def SetColorSensor(api, isEnable, colorPort):
     enable = c_bool(isEnable)
     while True:
         result = api.SetColorSensor(enable, colorPort)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1189,7 +1184,7 @@ def GetColorSensor(api):
     b = c_ubyte(0)
     while True:
         result = api.GetColorSensor(byref(r), byref(g), byref(b))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1202,7 +1197,7 @@ def SetInfraredSensor(api, isEnable, infraredPort):
     enable = c_bool(isEnable)
     while True:
         result = api.SetInfraredSensor(enable, infraredPort)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1212,7 +1207,7 @@ def GetInfraredSensor(api, infraredPort):
     val = c_ubyte(0)
     while True:
         result = api.GetInfraredSensor(infraredPort, byref(val))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1224,7 +1219,7 @@ def SetAngleSensorStaticError(api, rearArmAngleError, frontArmAngleError):
     c_frontArmAngleError = c_float(frontArmAngleError)
     while True:
         result = api.SetAngleSensorStaticError(c_rearArmAngleError, c_frontArmAngleError)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1235,7 +1230,7 @@ def GetAngleSensorStaticError(api):
     frontArmAngleError = c_float(0)
     while True:
         result = api.GetAngleSensorStaticError(byref(rearArmAngleError), byref(frontArmAngleError))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1249,7 +1244,7 @@ def SetAngleSensorCoef(api, rearArmAngleCoef, frontArmAngleCoef):
     c_frontArmAngleCoef = c_float(frontArmAngleCoef)
     while True:
         result = api.SetAngleSensorCoef(c_rearArmAngleCoef, c_frontArmAngleCoef)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1260,7 +1255,7 @@ def GetAngleSensorCoef(api):
     frontArmAngleCoef = c_float(0)
     while True:
         result = api.GetAngleSensorCoef(byref(rearArmAngleCoef), byref(frontArmAngleCoef))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1273,7 +1268,7 @@ def SetBaseDecoderStaticError(api, baseDecoderError):
     c_baseDecoderError = c_float(baseDecoderError)
     while True:
         result = api.SetBaseDecoderStaticError(c_baseDecoderError)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1283,7 +1278,7 @@ def GetBaseDecoderStaticError(api):
     baseDecoderError = c_float(0)
     while True:
         result = api.GetBaseDecoderStaticError(byref(baseDecoderError))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1298,7 +1293,7 @@ def GetWIFIConnectStatus(api):
     isConnected = c_bool(0)
     while True:
         result = api.GetWIFIConnectStatus(byref(isConnected))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1309,7 +1304,7 @@ def GetWIFIConnectStatus(api):
 def SetWIFIConfigMode(api, enable):
     while True:
         result = api.SetWIFIConfigMode(enable)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1319,7 +1314,7 @@ def GetWIFIConfigMode(api):
     isEnabled = c_bool(0)
     while True:
         result = api.GetWIFIConfigMode(byref(isEnabled))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1332,7 +1327,7 @@ def SetWIFISSID(api, ssid):
     szPara.raw = ssid.encode("utf-8")
     while True:
         result = api.SetWIFISSID(szPara)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1342,7 +1337,7 @@ def GetWIFISSID(api):
     szPara = create_string_buffer(25)
     while True:
         result = api.GetWIFISSID(szPara, 25)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1356,7 +1351,7 @@ def SetWIFIPassword(api, password):
     szPara.raw = password.encode("utf-8")
     while True:
         result = api.SetWIFIPassword(szPara)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1366,7 +1361,7 @@ def GetWIFIPassword(api):
     szPara = create_string_buffer(25)
     while True:
         result = api.GetWIFIPassword(szPara, 25)
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1376,7 +1371,7 @@ def GetWIFIPassword(api):
 
 
 def SetWIFIIPAddress(api, dhcp, addr1, addr2, addr3, addr4):
-    wifiIPAddress = WIFIIPAddress()
+    wifiIPAddress = DobotTypes.WIFIIPAddress()
     wifiIPAddress.dhcp = dhcp
     wifiIPAddress.addr1 = addr1
     wifiIPAddress.addr2 = addr2
@@ -1384,17 +1379,17 @@ def SetWIFIIPAddress(api, dhcp, addr1, addr2, addr3, addr4):
     wifiIPAddress.addr4 = addr4
     while True:
         result = api.SetWIFIIPAddress(byref(wifiIPAddress))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
 
 
 def GetWIFIIPAddress(api):
-    wifiIPAddress = WIFIIPAddress()
+    wifiIPAddress = DobotTypes.WIFIIPAddress()
     while True:
         result = api.GetWIFIIPAddress(byref(wifiIPAddress))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1405,24 +1400,24 @@ def GetWIFIIPAddress(api):
 
 
 def SetWIFINetmask(api, addr1, addr2, addr3, addr4):
-    wifiNetmask = WIFINetmask()
+    wifiNetmask = DobotTypes.WIFINetmask()
     wifiNetmask.addr1 = addr1
     wifiNetmask.addr2 = addr2
     wifiNetmask.addr3 = addr3
     wifiNetmask.addr4 = addr4
     while True:
         result = api.SetWIFINetmask(byref(wifiNetmask))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
 
 
 def GetWIFINetmask(api):
-    wifiNetmask = WIFINetmask()
+    wifiNetmask = DobotTypes.WIFINetmask()
     while True:
         result = api.GetWIFINetmask(byref(wifiNetmask))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1433,24 +1428,24 @@ def GetWIFINetmask(api):
 
 
 def SetWIFIGateway(api, addr1, addr2, addr3, addr4):
-    wifiGateway = WIFIGateway()
+    wifiGateway = DobotTypes.WIFIGateway()
     wifiGateway.addr1 = addr1
     wifiGateway.addr2 = addr2
     wifiGateway.addr3 = addr3
     wifiGateway.addr4 = addr4
     while True:
         result = api.SetWIFIGateway(byref(wifiGateway))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
 
 
 def GetWIFIGateway(api):
-    wifiGateway = WIFIGateway()
+    wifiGateway = DobotTypes.WIFIGateway()
     while True:
         result = api.GetWIFIGateway(byref(wifiGateway))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1461,24 +1456,24 @@ def GetWIFIGateway(api):
 
 
 def SetWIFIDNS(api, addr1, addr2, addr3, addr4):
-    wifiDNS = WIFIDNS()
+    wifiDNS = DobotTypes.WIFIDNS()
     wifiDNS.addr1 = addr1
     wifiDNS.addr2 = addr2
     wifiDNS.addr3 = addr3
     wifiDNS.addr4 = addr4
     while True:
         result = api.SetWIFIDNS(byref(wifiDNS))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
 
 
 def GetWIFIDNS(api):
-    wifiDNS = WIFIDNS()
+    wifiDNS = DobotTypes.WIFIDNS()
     while True:
         result = api.GetWIFIDNS(byref(wifiDNS))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1488,10 +1483,10 @@ def GetWIFIDNS(api):
 
 
 # FIRMWARE
-def UpdateFirmware(api, firmwareParams: FirmwareParams):
+def UpdateFirmware(api, firmwareParams: DobotTypes.FirmwareParams):
     while True:
         result = api.UpdateFirmware(byref(firmwareParams))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1501,7 +1496,7 @@ def SetFirmwareMode(api, firmwareMode):
     firmwareMode = c_uint(firmwareMode)
     while True:
         result = api.SetFirmwareMode(byref(firmwareMode))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1519,7 +1514,7 @@ def SetLostStepParams(api, threshold, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetAutoLevelingCmd(threshold, isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1530,7 +1525,7 @@ def SetLostStepCmd(api, isQueued=1):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetLostStepCmd(isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1559,11 +1554,11 @@ def GetUART4PeripheralsEnable(api):
 
 
 # Function Pluse Mode
-def SendPluse(api, pluseCmd: PluseCmd, isQueued=0):
+def SendPluse(api, pluseCmd: DobotTypes.PluseCmd, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SendPluse(byref(pluseCmd), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1575,11 +1570,11 @@ def SendPluseEx(api, pluseCmd):
     return result
 
 
-def GetPTPTime(api, ptpCmd: PTPCmd, ptpTime):
+def GetPTPTime(api, ptpCmd: DobotTypes.PTPCmd, ptpTime):
     m_ptpTime = c_uint32(ptpTime)
     while True:
         result = api.GetFirmwareMode(byref(ptpCmd), byref(m_ptpTime))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1587,21 +1582,21 @@ def GetPTPTime(api, ptpCmd: PTPCmd, ptpTime):
 
 
 def GetServoPIDParams(api):
-    pid = PID()
+    pid = DobotTypes.PID()
     while True:
         result = api.GetFirmwareMode(byref(pid))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
     return pid
 
 
-def SetServoPIDParams(api, pid: PID, isQueued=0):
+def SetServoPIDParams(api, pid: DobotTypes.PID, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.SetServoPIDParams(byref(pid), isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1612,7 +1607,7 @@ def GetServoControlLoop(api):
     controlLoop = c_uint8()
     while True:
         result = api.GetServoControlLoop(m_index, byref(controlLoop))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1626,7 +1621,7 @@ def SetServoControlLoop(api, p_index, controlLoop, isQueued=0):
 
     while True:
         result = api.SetServoControlLoop(m_index, controlLoop, isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1639,7 +1634,7 @@ def SaveServoPIDParams(api, p_index, controlLoop, isQueued=0):
 
     while True:
         result = api.SaveServoPIDParams(m_index, controlLoop, isQueued, byref(queuedCmdIndex))
-        if result != DobotCommunicate.DobotCommunicate_Successfully:
+        if result != DobotTypes.DobotCommunicate.DobotCommunicate_Successfully:
             dSleep(5)
             continue
         break
@@ -1665,7 +1660,7 @@ def SetHOMECmdEx(api, temp, isQueued=0):
     queuedCmdIndex = c_uint64(0)
     while True:
         result = api.GetQueuedCmdCurrentIndex(byref(queuedCmdIndex))
-        if result == DobotCommunicate.DobotCommunicate_Successfully and ret[0] <= queuedCmdIndex.value:
+        if result == DobotTypes.DobotCommunicate.DobotCommunicate_Successfully and ret[0] <= queuedCmdIndex.value:
             break
         # 延时太短的话按reset键后不能断开连接
         dSleep(100)

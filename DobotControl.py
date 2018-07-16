@@ -1,6 +1,8 @@
+import sys
 from threading import Thread
 
 import DobotAPI
+import DobotTypes
 from DobotSession import DobotSession
 
 
@@ -17,22 +19,42 @@ class DobotControl(Thread):
             DobotControl.first_init = False
         return DobotControl.searched
 
-    def __init__(self, index, addr):
+    def __init__(self):
         super().__init__()
-        self.addr = addr
-        self.connect_state = None
-        self.dobot = DobotSession(index)
-        self.dobot.SetCmdTimeout(100)
-        if addr not in DobotControl.search():
-            print("Cannot find port", addr)
-            return
-        self.connect_state = self.dobot.ConnectDobot(addr)[0]
-        print(addr, "Connect status:", DobotAPI.CONNECT_RESULT[self.connect_state])
+        self.addr = ""
+
+        self.connect_state = -1
+        self.dobot: DobotSession = None
+        self.speed = 200
+        self.acc = 200
+        self.connect_state = -1
+        self.device_name = "UnconnectedDobot"
+        self.device_sn = "UnknownSN"
+        self.device_version = "UnkownVersion"
 
     def user_init(self):
         pass
 
-    def init(self, speed=400):
+    def connect(self, addr):
+        self.addr = addr
+        if addr not in DobotControl.search():
+            raise Exception("Cannot find port", addr)
+
+        self.dobot = DobotSession()
+        self.connect_state = self.dobot.ConnectDobot(addr)[0]
+        print(addr, "Connect status:", DobotTypes.CONNECT_RESULT[self.connect_state])
+        self.device_name = self.dobot.GetDeviceName() or "Dobot%d" % self.dobot.dobotId
+        self.device_version = '%d.%d.%d' % tuple(self.dobot.GetDeviceVersion())
+        if self.device_version != "3.2.2" and self.device_version != "3.5.0":
+            print("Device version may be not supported:", self.device_version, self, file=sys.stderr)
+
+    def setName(self, name: str):
+        self.device_name = name
+        self.dobot.SetDeviceName(name)
+
+    def init(self):
+        if self.connect_state != DobotTypes.DobotConnect.DobotConnect_Successfully:
+            raise Exception("You should connect dobot successfully before you init it", self.addr)
         print("Initing dobot", self.addr)
         DobotAPI.GetPose(self.dobot.api)
         self.dobot.GetPose()
@@ -40,19 +62,24 @@ class DobotControl(Thread):
         self.dobot.SetQueuedCmdStopExec()
         self.dobot.SetQueuedCmdClear()
         self.dobot.SetQueuedCmdStartExec()
-        self.dobot.SetPTPJointParamsEx(speed, speed, speed, speed, speed, speed, speed, speed, 1)
-        self.dobot.SetPTPCoordinateParams(speed, speed, speed, speed, 1)
-        self.dobot.SetPTPJumpParamsEx(10, speed, 1)
-        self.dobot.SetPTPCommonParamsEx(speed, speed, 1)
+        self.dobot.SetPTPJointParamsEx(self.speed, self.acc, self.speed, self.acc, self.speed, self.acc, self.speed,
+                                       self.acc, 1)
+        self.dobot.SetPTPCoordinateParams(self.speed, self.acc, self.speed, self.acc, 1)
+        self.dobot.SetPTPJumpParamsEx(10, 170, 1)
+        self.dobot.SetPTPCommonParamsEx(self.speed, self.acc, 1)
+        self.reset_pose()
         self.unsuck()
         self.user_init()
+
+    def getAlarmState(self):
+        return self.dobot.GetAlarmsState()
 
     def reset_zero(self, home_pose):
         if type(home_pose) == list:
             home_pose = tuple(home_pose)
         print("Resetting position", self.addr)
         self.moveTo(*home_pose)
-        self.dobot.SetHOMEParams(*home_pose, 0, 1)
+        self.dobot.SetHOMEParams(*home_pose, 1)
         self.dobot.SetHOMECmdEx(temp=0, isQueued=1)
 
     def run(self):
@@ -63,14 +90,15 @@ class DobotControl(Thread):
             self.work()
         finally:
             self.clean()
+        print("stopped", self.addr)
 
     def clean(self):
         """
-           You must mannully call this method
+           You shall mannully call this method
            :return:
         """
+        print("auto cleaning", self.addr)
         self.unsuck()
-        self.dobot.SetQueuedCmdForceStopExec()
         self.dobot.DisconnectDobot()
 
     def suck(self):
@@ -84,13 +112,13 @@ class DobotControl(Thread):
 
     def moveTo(self, x=None, y=None, z=None, r=None, straight=False):
         nowPos = self.dobot.GetPose()
-        x = x or nowPos[0]
-        y = y or nowPos[1]
-        z = z or nowPos[2]
-        r = r or nowPos[3]
-        moveMode = DobotAPI.PTPMode.PTP_MOVL_XYZ_Mode if straight else DobotAPI.PTPMode.PTP_MOVJ_XYZ_Mode
+        x = float(x) if x is not None else nowPos[0]
+        y = float(y) if y is not None else nowPos[1]
+        z = float(z) if z is not None else nowPos[2]
+        r = float(r) if r is not None else nowPos[3]
+        moveMode = DobotTypes.PTPMode.PTP_MOVL_XYZ_Mode if straight else DobotTypes.PTPMode.PTP_MOVJ_XYZ_Mode
         print(self.addr, "move to", x, y, z, r)
-        self.dobot.SetPTPCmdEx(moveMode, x, y, z, 0, 1)
+        self.dobot.SetPTPCmdEx(moveMode, x, y, z, r, 1)
 
     def moveInc(self, dx=0, dy=0, dz=0, dr=0, straight=False):
         nowPos = self.dobot.GetPose()
@@ -104,11 +132,8 @@ class DobotControl(Thread):
         for i in range(spt_times):
             self.moveInc(*each_list)
 
-    def __str__(self):
-        return "Dobot: %s %s" % (self.addr, self.connect_state)
-
     def isOk(self):
-        return self.connect_state == DobotAPI.DobotConnect.DobotConnect_Successfully
+        return self.connect_state == DobotTypes.DobotConnect.DobotConnect_Successfully
 
     def work(self):
         pass
@@ -127,6 +152,9 @@ class DobotControl(Thread):
     def reset_pose(self):
         if self.dobot.SetLostStepCmd():
             self.dobot.ResetPose(0, 0, 0)
+
+    def __str__(self):
+        return "Dobot[{name}, {addr}, {sn}]".format(name=self.device_name, addr=self.addr, sn=self.device_sn)
 
 
 def color_exists(n):

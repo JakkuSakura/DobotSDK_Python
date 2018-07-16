@@ -1,9 +1,11 @@
 import sys
 import time
+import uuid
 
 from typing import List
 
 import DobotAPI
+import DobotTypes
 import DualCarriers
 
 
@@ -11,14 +13,14 @@ import DualCarriers
 
 
 class Dobot(DualCarriers.DobotControl):
-    def __init__(self, index, addr):
-        super().__init__(index, addr)
+    def __init__(self):
+        super().__init__()
         self.home_pose = (219.97760009765625, -4.5157277781981975e-05, 80.15045928955078)
         self.running = False
         self.command = ""
 
     def user_init(self):
-        self.dobot.SetColorSensor(1, DobotAPI.ColorPort.PORT_GP2)
+        self.dobot.SetColorSensor(1, DobotTypes.ColorPort.PORT_GP2)
 
         self.dobot.SetEMotorEx(DualCarriers.Settings.MOTOR_PORT, 0, 0, 1)
         self.running = True
@@ -28,14 +30,13 @@ class Dobot(DualCarriers.DobotControl):
             while self.command == '':
                 time.sleep(0.1)
             try:
-                cmd = self.command
-                print(self.addr, cmd)
-                if cmd == "s":
+                print(self.addr, self.command)
+                if self.command == "s":
                     print(self.addr, tuple(self.dobot.GetPose()))
-                elif cmd == "c":
+                elif self.command == "c":
                     print(self.addr, self.dobot.GetColorSensor())
-                elif cmd.startswith("m"):
-                    spt = cmd[1:].split()
+                elif self.command.startswith("m"):
+                    spt = self.command[1:].split()
                     if spt[0] == 'u':
                         self.moveInc(dz=float(spt[1]))
                     elif spt[0] == 'd':
@@ -50,17 +51,31 @@ class Dobot(DualCarriers.DobotControl):
                         self.moveInc(dx=-float(spt[1]))
                     elif spt[0] == 'rh':
                         self.moveInc(dr=float(spt[1]))
-                elif cmd == "hm":
+                elif self.command == "hm":
                     print("goto home")
                     self.moveTo(*self.home_pose)
-                elif cmd == "us":
+                elif self.command == "us":
                     self.unsuck()
-                elif cmd == "sk":
+                elif self.command == "sk":
                     self.suck()
-                elif cmd == "cl":
+                elif self.command == "cl":
                     self.reset_zero(self.home_pose)
-                elif cmd == "sr":
+                elif self.command == "sr":
                     self.home_pose = self.dobot.GetPose()[:3]
+                elif self.command.startswith("to"):
+                    self.command = self.command[2:]
+                    spt = self.command.split()
+                    self.moveTo(spt[0], spt[1], spt[2], spt[3])
+                elif self.command == "snm":
+                    spt = self.command.split()
+                    if len(spt) == 2:
+                        self.setName(spt[1][:25])
+                    else:
+                        self.setName(str(uuid)[:25])
+                elif self.command == "nm":
+                    print(self.device_name)
+                elif self.command == 'pt':
+                    print(self.addr)
                 else:
                     raise Exception("Unknown command")
             except Exception as e:
@@ -70,8 +85,8 @@ class Dobot(DualCarriers.DobotControl):
 
         print("exit", self.addr)
 
-    def exec(self, cmd):
-        self.command = cmd
+    def exec(self, cmd_):
+        self.command = cmd_
 
 
 class Command:
@@ -83,22 +98,27 @@ class Command:
 
     def work(self):
         for e in self.dobots:
+            e.running = True
+            e.setDaemon(True)
             e.start()
         try:
             while True:
                 time.sleep(0.1)
-                cmd = input(">> ")
+                cmd_ = input(">> ")
                 try:
-                    id = int(cmd[0])
-                    cmd = cmd[1:]
-                    if cmd[0] == 'w':
+                    if not cmd_:
+                        continue
+                    if cmd_ == 'q':
+                        return
+                    id = int(cmd_[0])
+                    cmd_ = cmd_[1:]
+                    if cmd_[0] == 'w':
                         while True:
-                            self.dobots[id].exec(cmd[1:])
+                            self.dobots[id].exec(cmd_[1:])
                             time.sleep(0.5)
-                    elif cmd[0] == 'p':
-                        print(id, self.dobots[id].addr)
+
                     else:
-                        self.dobots[id].exec(cmd)
+                        self.dobots[id].exec(cmd_)
                 except KeyboardInterrupt:
                     raise
                 except Exception as e:
@@ -110,8 +130,9 @@ class Command:
 
 if __name__ == "__main__":
     sr = Dobot.search()
-    dl = [Dobot(i, sr[i]) for i in range(len(sr))]
+    dobots = [Dobot()] * len(sr)
     cmd = Command()
-    for e in dl:
-        cmd.add(e)
+    for i in range(len(dobots)):
+        dobots[i].connect(sr[i])
+        cmd.add(dobots[i])
     cmd.work()
