@@ -3,21 +3,22 @@ from threading import Thread
 
 import DobotAPI
 import DobotTypes
+import getDisMap
 from DobotSession import DobotSession
 
 
 class DobotControl(Thread):
     first_init = True
     root_session = DobotSession('', '')
-    searched = []
+    _searched = []
 
     @staticmethod
     def search():
         if DobotControl.first_init:
-            DobotControl.searched = DobotControl.root_session.SearchDobot()
-            print(DobotControl.searched)
+            DobotControl._searched = DobotControl.root_session.SearchDobot()
+            print(DobotControl._searched)
             DobotControl.first_init = False
-        return DobotControl.searched
+        return DobotControl._searched
 
     def __init__(self):
         super().__init__()
@@ -28,32 +29,28 @@ class DobotControl(Thread):
         self.speed = 200
         self.acc = 200
         self.connect_state = -1
-        self.device_name = "UnconnectedDobot"
-        self.device_sn = "UnknownSN"
         self.device_version = "UnkownVersion"
 
     def user_init(self):
         pass
 
-    def connect(self, addr):
-        self.addr = addr
+    def setAddr(self, addr):
         if addr not in DobotControl.search():
             raise Exception("Cannot find port", addr)
+        self.addr = addr
 
+    def connect(self):
+        if self.isOk():
+            return
         self.dobot = DobotSession()
-        self.connect_state = self.dobot.ConnectDobot(addr)[0]
-        print(addr, "Connect status:", DobotTypes.CONNECT_RESULT[self.connect_state])
-        self.device_name = self.dobot.GetDeviceName() or "Dobot%d" % self.dobot.dobotId
+        self.connect_state = self.dobot.ConnectDobot(self.addr)[0]
+        print(self.addr, "Connect status:", DobotTypes.CONNECT_RESULT[self.connect_state])
         self.device_version = '%d.%d.%d' % tuple(self.dobot.GetDeviceVersion())
         if self.device_version != "3.2.2" and self.device_version != "3.5.0":
             print("Device version may be not supported:", self.device_version, self, file=sys.stderr)
 
-    def setName(self, name: str):
-        self.device_name = name
-        self.dobot.SetDeviceName(name)
-
     def init(self):
-        if self.connect_state != DobotTypes.DobotConnect.DobotConnect_Successfully:
+        if not self.isOk():
             raise Exception("You should connect dobot successfully before you init it", self.addr)
         print("Initing dobot", self.addr)
         DobotAPI.GetPose(self.dobot.api)
@@ -83,9 +80,10 @@ class DobotControl(Thread):
         self.dobot.SetHOMECmdEx(temp=0, isQueued=1)
 
     def run(self):
+        self.connect()
+        if not self.isOk():
+            return
         try:
-            if not self.isOk():
-                return
             self.init()
             self.work()
         finally:
@@ -139,12 +137,17 @@ class DobotControl(Thread):
         pass
 
     def startMoto(self, port, speed):
-        vel = float(speed) * 282.94212105225836
+        if speed <= 0:
+            raise Exception("You should call stopMoto")
+        vel = speed * 282.94212105225836
         self.dobot.SetEMotorEx(port, 1, int(vel), 1)
 
-    def startMotoS(self, port, distance, speed):
-        vel = float(speed) * 282.94212105225836
-        self.dobot.SetEMotorSEx(port, 1, int(vel), distance, 1)
+    def startMotoS(self, port, speed, distance_ms):
+        if speed <= 0 or distance_ms <= 0:
+            raise Exception("You should call stopMoto")
+        vel = speed * 282.94212105225836
+        distance = getDisMap.get_dis_tick(distance_ms)
+        self.dobot.SetEMotorSEx(port, 1, int(vel), int(distance), 1)
 
     def stopMoto(self, port):
         self.dobot.SetEMotorEx(port, 0, 0, 1)
@@ -154,7 +157,7 @@ class DobotControl(Thread):
             self.dobot.ResetPose(0, 0, 0)
 
     def __str__(self):
-        return "Dobot[{name}, {addr}, {sn}]".format(name=self.device_name, addr=self.addr, sn=self.device_sn)
+        return "Dobot[{addr}]".format(addr=self.addr)
 
 
 def color_exists(n):

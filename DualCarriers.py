@@ -1,29 +1,27 @@
 import threading
 import time
-
 from typing import List
 
 import DobotAPI
-from DobotSession import DobotSession
 import DobotTypes
 from DobotControl import DobotControl, find_color_index, color_exists
 
 
 class Settings:
-    COLOR_SERIES = None
-    MOTOR_DIS = 25000
-    DEFAULT_MOTO_SPEED = 80
+    COLOR_SERIES = [1, 1, 2, 2]
+    MOTOR_DIS = 542 / 6
+    DEFAULT_MOTO_SPEED = 50
+    COM_LEFT = "COM6"
+    COM_RIGHT = "COM5"
 
-    SN_LEFT = ""
-    SN_RIGHT = ""
+    HOME_BASE = (230, 0, 80, 30)
 
-    HOME_BASE = (230, 0, 80, 90)
+    RIGHT_TEMP_GET_DIS = 30
 
-    RIGHT_TEMP_GET_DIS = 28
-    RIGHT_TEMP_BASE = (153.78334045410156, 201.6071319580078, -41.10369110107422)
-    RIGHT_GET_BASE = (253.4164581298828, -8.221147537231445, 22.742271423339844)
+    RIGHT_TEMP_BASE = (147.23934936523438, 195.394775390625, -40.386314392089844)
+    RIGHT_GET_BASE = (245.8165740966797, 0, 20.960845947265625)
     RIGHT_FIX_Y = (11, 7, 7)
-    RIGHT_PUT_BASE = (145.63232421875, -200.4977569580078, -66.65545654296875)
+    RIGHT_PUT_BASE = (150.06248474121094, -191.3921356201172, -66.0019302368164)
     RIGHT_WASTE_POSE = (173, 102, 10)
     RIGHT_PUT_DIS_X = 65
     RIGHT_PUT_DIS_Y = 27
@@ -34,8 +32,8 @@ class Settings:
     BLOCK_SIZE = 26
     DobotAPI.OutPutFlag = False
 
-    LEFT_GET_BASE = (68.59613037109375, 279.8572692871094, -43.00749588012695)
-    LEFT_PUT_BASE = (247.058349609375, 11.079216003417969, 18.330650329589844)
+    LEFT_GET_BASE = (85.82850646972656, 192.2878875732422, -32.388450622558594)
+    LEFT_PUT_BASE = (252.84046936035156, 0, 20.267623901367188)
 
     LEFT_GET_DIS_Y = 30
     LEFT_GET_DIS_X = 30
@@ -44,7 +42,8 @@ class Settings:
     # INFRARED_PORT = DobotTypes.InfraredPort.PORT_GP2
     COLOR_PORT = DobotTypes.ColorPort.PORT_GP2
 
-    ENABLE_LEFT = False
+    ENABLE_LEFT = True
+    ENABLE_RIGHT = True
 
     RIGHT_DEBUG = False
     LEFT_DEBUG = False
@@ -56,22 +55,31 @@ class Interal(threading.Thread):
     def __init__(self, right):
         super().__init__()
         self.right: Right = right
+        self.hold = False
 
     def run(self):
         while self.right.glb.is_running:
-            if self.right.blockComes():
+            if color_exists(self.right.readColor(times=30)):
                 self.right.glb.is_taken = False
+            else:
+                # self.right.glb.is_taken = True
+                pass
             time.sleep(0.1)
+            if self.hold:
+                time.sleep(1.2)
+                self.hold = False
 
 
 class Right(DobotControl):
-    def __init__(self, global_obj):
+    def __init__(self, global_obj, addr):
         super().__init__()
         self.isWaitting = False
         self.glb: Global = global_obj
         self.counts = [0 for _ in range(4)]
-        self.speed = 600
+        self.speed = 1000
         self.acc = 600
+        self.setAddr(addr)
+        self.interal = Interal(self)
 
     def user_init(self):
         if Settings.HOME_INIT:
@@ -79,24 +87,22 @@ class Right(DobotControl):
         self.dobot.SetColorSensor(1, Settings.COLOR_PORT)
         self.startMoto(Settings.MOTOR_PORT, Settings.DEFAULT_MOTO_SPEED)
         # self.dobot.SetInfraredSensor(1, Settings.INFRARED_PORT)
-        self.moveTo(*Settings.HOME_BASE)
+        self.moveTo(r=Settings.HOME_BASE[3])
+        self.interal.setDaemon(True)
+        self.interal.start()
         if Settings.RIGHT_DEBUG:
             self.moveAboveGetPlace()
 
             self.moveToGetTemp(0)
 
             self.moveToPutPlace(0)
-
+            self.counts = [0, 0, 0, 0]
             self.moveAboveGetPlace()
 
             while Settings.RIGHT_DEBUG:
                 time.sleep(0.1)
 
     def work(self):
-        """
-        this method was used for default satuation.
-        :return: 
-        """
         print("running right")
         print("temp blocks")
         for i in range(4):
@@ -104,38 +110,28 @@ class Right(DobotControl):
                 return
             print("temp block", i)
             self.moveToGetTemp(i)
-            self.capture(up=30)
-            if Settings.COLOR_SERIES is not None and i < len(Settings.COLOR_SERIES):
-                color = Settings.COLOR_SERIES[i]
-            else:
-                self.moveAboveGetPlace()
-                color = self.readColor(times=10, default=(0, 1, 0))
+            self.capture(down=10, up=0)
+            color = Settings.COLOR_SERIES[i]
             self.moveToPutPlace(color)
             self.release(down=5, up=10)
         self.glb.finished_temp = True
-        inter = Interal(self)
-        inter.start()
+
         print("left zone blocks")
+        while self.glb.is_running and self.glb.left is not None and self.glb.left_put:
+            time.sleep(0.1)
+
+        color = (0, 0, 0)
         for i in range(12):
             if not self.glb.is_running:
                 return
-            while self.glb.is_running and self.glb.left is not None and self.glb.left.left_putting:
-                time.sleep(0.01)
-            self.glb.startMoto()
-            self.reset_pose()
-            self.moveAboveGetPlace()
-            self.glb.awaitting = True
+            self.moveAboveGetPlace(last_color_index=find_color_index(color))
             self.waitComes()
-            self.glb.stopMoto()
             color = self.readColor(times=15)
-            index = find_color_index(color, 1)
-
-            self.moveAboveGetPlace(fix=Settings.RIGHT_FIX_Y[index])
-            self.capture(up=15)
+            self.interal.hold = True
+            self.capture(down=10, up=15)
             self.glb.is_taken = True
-            self.glb.awaitting = False
             self.moveToPutPlace(color)
-            self.release(down=5, up=30)
+            self.release(down=5, up=10)
 
     def moveToGetTemp(self, i):
         pose = self.getTempGetPose(i)
@@ -182,19 +178,16 @@ class Right(DobotControl):
         time.sleep(0.1)
         self.moveInc(dz=up)
 
-    def moveAboveGetPlace(self, fix=0, last_color=-1):
+    def moveAboveGetPlace(self, fix=0, last_color_index=-1):
         now_pose = self.dobot.GetPose()
         target_pose = list(Settings.RIGHT_GET_BASE)
         target_pose[1] += fix
-        if now_pose[1] - 30 > target_pose[1]:
-            print("moved specially from temp zone")
-            self.moveTo(x=target_pose[0], y=(target_pose[1] + now_pose[1]) / 3, z=target_pose[2] + 20, r=90)
-        else:
-            should_height = self.getShouldHeight(last_color, target_pose[2])
-            if now_pose[2] < should_height:
-                self.moveTo(z=target_pose[2])
-            self.moveTo(*target_pose[:2])
 
+        if now_pose[1] < -50:
+            should_height = max(self.getShouldHeight(last_color_index, now_pose[2]), Settings.RIGHT_GET_BASE[2])
+            self.moveTo(z=max(now_pose[2], should_height))
+
+        self.moveTo(*target_pose[:2])
         self.moveTo(*target_pose)
 
     def capture(self, down=15, up=5):
@@ -204,13 +197,11 @@ class Right(DobotControl):
         self.moveInc(dz=up)
 
     def moveToPutPlace(self, color):
-        now_pose = self.dobot.GetPose()
         if type(color) == tuple or type(color) == list:
             index = find_color_index(color, -1)
         else:
             index = color
-            if now_pose[2] < 60:
-                self.moveTo(z=60)
+        now_pose = self.dobot.GetPose()
 
         if index < 0:
             target_pose = list(Settings.RIGHT_WASTE_POSE)
@@ -225,18 +216,17 @@ class Right(DobotControl):
         self.counts[index] += 1
 
         print("put", self.counts)
-        should_height = self.getShouldHeight(index, target_pose[2])
-        if now_pose[2] < should_height:
-            if target_pose[2] == should_height:
-                self.moveTo(z=should_height)
-            else:
-                self.moveTo(z=should_height + Settings.BLOCK_SIZE)
+        should_height = self.getShouldHeight(index, target_pose[2] - Settings.BLOCK_SIZE)
 
-        self.moveTo(*target_pose[:2], r=target_pose[3])
+        self.moveTo(z=max(now_pose[2], target_pose[2], should_height + Settings.BLOCK_SIZE,
+                          Settings.RIGHT_GET_BASE[2] + Settings.BLOCK_SIZE * 2))
+
+        self.moveTo(*target_pose[:2])
+
         self.moveTo(*target_pose)
 
     def getPutPose(self, index):
-        target_pose = [0, 0, 0, -50]
+        target_pose = [0, 0, 0]
         target_pose[0] = Settings.RIGHT_PUT_BASE[0] - Settings.RIGHT_PUT_DIS_X * index
         target_pose[1] = Settings.RIGHT_PUT_BASE[1] + Settings.RIGHT_PUT_DIS_Y * (
                 self.counts[index] // Settings.RIGHT_PUT_LIMIT * 3 - 2)
@@ -268,7 +258,7 @@ class Right(DobotControl):
     def clean(self):
         print("cleaning right")
         self.stopMoto(Settings.MOTOR_PORT)
-        # self.dobot.SetColorSensor(0, Settings.COLOR_PORT)
+        self.dobot.SetColorSensor(0, Settings.COLOR_PORT)
         self.glb.stop()
 
     def moveToTransferer(self):
@@ -277,18 +267,22 @@ class Right(DobotControl):
 
 
 class Left(DobotControl):
-    def __init__(self, global_obj):
+    def __init__(self, global_obj, addr):
         super().__init__()
         self.glb: Global = global_obj
         self.left_putting = False
-        self.speed = 600
+        self.speed = 1000
         self.acc = 600
-        if Settings.HOME_INIT:
-            self.reset_zero(Settings.HOME_BASE)
+        self.setAddr(addr)
 
     def user_init(self):
+        if Settings.HOME_INIT:
+            self.reset_zero(Settings.HOME_BASE)
         self.unsuck()
+        self.stopMoto()
+
         if Settings.LEFT_DEBUG:
+            self.gotoPut()
             for i in range(12):
                 self.getBlockLeft(i)
             self.gotoPut()
@@ -296,10 +290,9 @@ class Left(DobotControl):
             while Settings.LEFT_DEBUG:
                 time.sleep(0.1)
 
-    def wait(self):
-        if self.glb.finished_temp:
-            print("wait taken")
-            self.glb.waitTaken()
+    def waitTaken(self):
+        while self.glb.is_running and not self.glb.is_taken:
+            time.sleep(0.01)
 
     def work(self):
         print("running left")
@@ -307,42 +300,34 @@ class Left(DobotControl):
             if not self.glb.is_running:
                 return
             self.getBlockLeft(i)
-            self.gotoPut()
-            self.release()
-        print("left ok")
-
-    def work_old(self):
-        print("running left")
-        for i in range(12):
-            if not self.glb.is_running:
-                return
-            self.wait()
-            self.getBlockLeft(i)
-            self.wait()
+            self.capture(down=15, up=50)
             self.gotoPut()
             self.left_putting = True
-            self.stopMoto()
             self.release()
-            self.startMoto()
             self.left_putting = False
+            self.waitTaken()
+            self.startMotoS()
+        # something strange happened to the last 6th block
+        self.glb.is_taken = False
+        while self.glb.is_running:
+            self.waitTaken()
+            time.sleep(2)
+            self.startMotoS()
+            time.sleep(2)
         print("left ok")
         self.glb.trans_moto_control = True
 
     def getBlockLeft(self, index):
         lst = list(Settings.LEFT_GET_BASE)
         lst[0] -= Settings.LEFT_GET_DIS_X * (index // 4)
-        lst[1] -= Settings.LEFT_GET_DIS_Y * (index % 4)
+        lst[1] += Settings.LEFT_GET_DIS_Y * (index % 4)
         self.moveTo(*lst)
-        self.moveInc(dz=-10)
-        self.suck()
-        time.sleep(0.2)
-        self.moveInc(dz=50)
 
     def startMoto(self, port=Settings.MOTOR_PORT, speed=Settings.DEFAULT_MOTO_SPEED):
         super().startMoto(port, speed)
 
-    def startMotoS(self, port=Settings.MOTOR_PORT, distance=Settings.MOTOR_DIS, speed=Settings.DEFAULT_MOTO_SPEED):
-        super().startMotoS(port, distance, speed)
+    def startMotoS(self, port=Settings.MOTOR_PORT, speed=Settings.DEFAULT_MOTO_SPEED, distance=Settings.MOTOR_DIS):
+        super().startMotoS(port, speed, distance)
 
     def stopMoto(self, port=Settings.MOTOR_PORT):
         self.dobot.SetEMotorEx(port, 0, 0, 1)
@@ -361,7 +346,14 @@ class Left(DobotControl):
 
     def clean(self):
         print("cleaning left")
-        self.stopMoto()
+        # self.stopMoto()
+        self.unsuck()
+
+    def capture(self, down=15, up=5):
+        self.moveInc(dz=-down)
+        self.suck()
+        time.sleep(0.1)
+        self.moveInc(dz=up)
 
 
 class Global:
@@ -369,19 +361,14 @@ class Global:
     def __init__(self):
         self.trans_moto_control = not Settings.ENABLE_LEFT
 
-        self.left = Left(self) if Settings.ENABLE_LEFT else None
-        self.right = Right(self)
+        self.left = Left(self, Settings.COM_LEFT) if Settings.ENABLE_LEFT else None
+        self.right = Right(self, Settings.COM_RIGHT) if Settings.ENABLE_RIGHT else None
         self.dobots: List[DobotControl] = [self.left, self.right]
         self.sent = False
         self.is_taken = True
-        self.coming = False
-        self.awaitting = False
         self.is_running = True
         self.finished_temp = False
-
-    def waitTaken(self):
-        while self.is_running and not self.is_taken or self.awaitting:
-            time.sleep(0.01)
+        self.left_put = False
 
     def stopMoto(self):
         if self.left is not None and self.left.isOk():
@@ -397,26 +384,27 @@ class Global:
             self.left.startMoto(Settings.MOTOR_PORT, Settings.DEFAULT_MOTO_SPEED)
 
     def run(self):
-        # todo
-        addrs = DobotControl.search()
-        for add_i in range(addrs):
-            dobot = DobotSession()
-            dobot.ConnectDobot(addrs[add_i])
-            sn = dobot.GetDeviceName()
-
+        ipt = input("Go?[G/r]")
+        if ipt == 'r':
+            exit(0)
         for e in self.dobots:
-            e.connect()
-            if e is not None and e.isOk():
+            if e is not None:
                 e.setDaemon(True)
                 e.start()
-        if Settings.LEFT_DEBUG or Settings.RIGHT_DEBUG:
-            input("Go?")
-            Settings.LEFT_DEBUG = Settings.RIGHT_DEBUG = False
+        Settings.LEFT_DEBUG = Settings.RIGHT_DEBUG = False
+
+        begin_time = time.time()
         while self.is_running:
-            inp = input()
-            if inp == 'q':
-                self.is_running = False
-                break
+            time.sleep(0.1)
+            # inp = input()
+            # if inp == 'q':
+            #     self.is_running = False
+            #     break
+
+        end_time = time.time()
+
+        print("used time:", end_time - begin_time)
+
         for e in self.dobots:
             if e is not None:
                 e.join()

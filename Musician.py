@@ -10,11 +10,11 @@ from DobotControl import DobotControl
 
 
 class Right(DobotControl):
-    def __init__(self, index, addr):
-        super().__init__(index, addr)
+    def __init__(self):
+        super().__init__()
 
     def user_init(self):
-        self.dobot.SetColorSensor(1, DobotAPI.ColorPort.PORT_GP4)
+        self.dobot.SetColorSensor(1, DobotTypes.ColorPort.PORT_GP4)
 
     def work(self):
 
@@ -33,8 +33,8 @@ class Right(DobotControl):
 
 
 class Left(DobotControl):
-    def __init__(self, index, addr):
-        super().__init__(index, addr)
+    def __init__(self, ):
+        super().__init__()
         if DualCarriers.Settings.HOME_INIT:
             self.reset_zero(DualCarriers.Settings.HOME_BASE)
 
@@ -43,10 +43,10 @@ class Left(DobotControl):
         for i in range(0):
             self.getBlockLeft(i)
             self.gotoPut()
-            self.stopMoto()
+            self.stopMoto(DobotTypes.EMotorPort.EMOTOR_1)
             self.release()
-            self.startMoto()
-        self.startMoto()
+            self.startMoto(DobotTypes.EMotorPort.EMOTOR_1)
+        self.startMoto(DobotTypes.EMotorPort.EMOTOR_1)
 
     def moveSpt(self, x, y, z, spt_times):
         now = self.dobot.GetPose()
@@ -66,7 +66,6 @@ class Left(DobotControl):
         time.sleep(0.1)
         self.moveInc(dz=50)
 
-
     def gotoPut(self):
         l = list(DualCarriers.Settings.LEFT_PUT_BASE)
         l[2] += 10
@@ -84,7 +83,8 @@ class Left(DobotControl):
 
 
 if __name__ == "__main__":
-    rt = Right(0, "COM6")
+    rt = Right()
+    rt.connect(DobotControl.search()[0])
     rt.start()
 
     # left = Left(1, "COM5")

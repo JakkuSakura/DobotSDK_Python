@@ -6,21 +6,22 @@ from DobotControl import DobotControl, find_color_index, color_exists
 
 
 class Settings:
-    HOME_BASE = (210.15174865722656, 60.31856918334961, 20.25244903564453)
+    HOME_BASE = (210.15174865722656, 0, 20.25244903564453)
 
-    RIGHT_GET_DIS = 25
+    RIGHT_GET_DIS_X = 25
+    RIGHT_GET_DIS_Y = 25
 
-    RIGHT_PUT_DIS_X = 45
-    RIGHT_PUT_DIS_Y = 25
+    RIGHT_PUT_DIS_X = 50
+    RIGHT_PUT_DIS_Y = 30
 
-    RIGHT_GET_BASE = (210.15174865722656, 60.31856918334961, -35)
-    RIGHT_COLOR_BASE = (177.43209838867188, 175.313720703125, 14.28839111328125)
-    RIGHT_PUT_BASE = (100.2291030883789, 250.73562622070312, -35)
-    RIGHT_WASTE_POSE = (173, 102, -40)
+    RIGHT_GET_BASE = (212.95521545410156, 52.0932502746582, -35.081871032714844)
+    RIGHT_COLOR_BASE = (193.3789825439453, 170.01522827148438, 20.47089385986328)
+    RIGHT_PUT_BASE = (115.4960708618164, 145.10301208496094, -66.67840576171875)
+    RIGHT_WASTE_POSE = (186.422119140625, 232.47254943847656, 15.287193298339844)
 
-    BLOCK_SIZE = 26
+    BLOCK_SIZE = 28
     DobotAPI.OutPutFlag = False
-    RIGHT_DEBUG = True
+    RIGHT_DEBUG = False
     COLOR_PORT = DobotTypes.ColorPort.PORT_GP2
     HOME_INIT = False
     RIGHT_PUT_LIMIT = 8
@@ -42,44 +43,51 @@ class Robot(DobotControl):
         self.debug = False
         self.speed = 800
         self.acc = 500
-        if Settings.HOME_INIT:
-            self.reset_zero(Settings.HOME_BASE)
 
     def user_init(self):
         self.dobot.SetColorSensor(1, Settings.COLOR_PORT)
-        self.moveTo(*Settings.HOME_BASE)
+        if Settings.HOME_INIT:
+            self.reset_zero(Settings.HOME_BASE)
         if Settings.RIGHT_DEBUG:
-            for i in range(10):
-                self.moveToGetPlace(i)
+            for i in range(2):
+                self.moveToGetPlace(Settings.BLOCKS_ORDINARY[i], -1)
                 if Settings.COLOR_SERIES is not None and i < len(Settings.COLOR_SERIES):
                     print(Settings.color_dic[Settings.COLOR_SERIES[i]])
 
-            self.moveTo(*Settings.RIGHT_COLOR_BASE)
+            self.gotoColor()
             self.moveTo(*Settings.RIGHT_WASTE_POSE)
-            self.moveTo(*Settings.RIGHT_PUT_BASE)
+            self.moveToPutPlace((1, 0, 0))
+            self.moveToPutPlace((0, 1, 0))
+            self.moveToPutPlace((0, 0, 1))
+            self.counts = [0 for _ in range(4)]
+
             self.moveTo(z=30)
             self.moveTo(*Settings.HOME_BASE)
             pass
 
     def work(self):
+
+        color = (0, 0, 0)
         print("running right")
-        for i in range(12):
+        for i in range(2, 12):
             print("block", i)
-            self.moveToGetPlace(Settings.BLOCKS_ORDINARY[i], down=10)
-            self.capture(down=0, up=15)
+            self.moveToGetPlace(Settings.BLOCKS_ORDINARY[i], find_color_index(color), down=10)
+            self.suck()
             self.gotoColor()
             if Settings.COLOR_SERIES is not None and i < len(Settings.COLOR_SERIES):
                 color = Settings.COLOR_SERIES[i]
             else:
                 color = self.readColor(times=10, default=(0, 1, 0))
-            self.moveToPutPlace(color, down=5)
-            self.release(down=0, up=0)
+            self.moveToPutPlace(color, down=0)
+            self.release(up=10)
 
-    def moveToGetPlace(self, i, down=0):
+    def moveToGetPlace(self, i, last_color_index, down=0):
         pose = self.getGetPose(i)
         nowPose = self.dobot.GetPose()[:3]
-        if nowPose[2] < 10 and nowPose[2] < Settings.RIGHT_COLOR_BASE[2]:
-            self.moveTo(z=Settings.RIGHT_COLOR_BASE[2])
+        if nowPose[1] > 100:
+            should_height = max(self.getShouldHeight(last_color_index, nowPose[2]), Settings.RIGHT_COLOR_BASE[2])
+            self.moveTo(z=max(nowPose[2], should_height))
+
         self.moveTo(*pose[:2])
         pose[2] -= down
         self.moveTo(*pose)
@@ -105,7 +113,7 @@ class Robot(DobotControl):
         self.moveInc(dz=-down)
         self.suck()
         time.sleep(0.1)
-        self.moveInc(dz=up)
+        self.moveInc(dz=up, straight=True)
 
     def release(self, down=0, up=0):
         self.moveInc(dz=-down)
@@ -119,10 +127,9 @@ class Robot(DobotControl):
             self.moveTo(z=Settings.RIGHT_COLOR_BASE[2])
         else:
             self.moveTo(*Settings.RIGHT_COLOR_BASE[:2])
-        to = list(Settings.RIGHT_COLOR_BASE)
-        self.moveTo(*to)
+        self.moveTo(*Settings.RIGHT_COLOR_BASE)
 
-    def moveToPutPlace(self, color, down):
+    def moveToPutPlace(self, color, down=0):
         now_pose = self.dobot.GetPose()
         if type(color) == tuple or type(color) == list:
             index = find_color_index(color, -1)
@@ -144,32 +151,33 @@ class Robot(DobotControl):
         self.counts[index] += 1
 
         print("put", self.counts)
-        should_height = self.getShouldHeight(index, target_pose[2])
-        if now_pose[2] < should_height:
-            if target_pose[2] == should_height:
-                self.moveTo(z=should_height)
-            else:
-                self.moveTo(z=should_height + Settings.BLOCK_SIZE)
+        should_height = self.getShouldHeight(index, target_pose[2] - Settings.BLOCK_SIZE)
+
+        if should_height > Settings.RIGHT_COLOR_BASE[2]:
+                self.moveTo(z=max(target_pose[2], should_height + Settings.BLOCK_SIZE))
 
         self.moveTo(*target_pose[:2], r=target_pose[3])
         target_pose[2] -= down
         self.moveTo(*target_pose)
 
-    def getShouldHeight(self, index, target_pose_height):
-        if index <= 0:
+    def getShouldBlocksHeight(self, color_index):
+        return max(self.counts[color_index + 1:])
+
+    def getShouldHeight(self, color_index, target_pose_height):
+        if color_index < 0:
             return target_pose_height
 
-        max_blocks = max(self.counts[:index])
+        max_blocks = self.getShouldBlocksHeight(color_index)
 
         return max(target_pose_height, Settings.RIGHT_PUT_BASE[2] + max_blocks * Settings.BLOCK_SIZE)
 
-    def getPutPose(self, index):
-        target_pose = [0, 0, 0, -50]
-        target_pose[0] = Settings.RIGHT_PUT_BASE[0] - Settings.RIGHT_PUT_DIS_X * index
+    def getPutPose(self, color_index):
+        target_pose = [0, 0, 0, 0]
+        target_pose[0] = Settings.RIGHT_PUT_BASE[0] - Settings.RIGHT_PUT_DIS_X * (3 - color_index)
         target_pose[1] = Settings.RIGHT_PUT_BASE[1] + Settings.RIGHT_PUT_DIS_Y * (
-                self.counts[index] // Settings.RIGHT_PUT_LIMIT * 3 - 2)
+                3 - self.counts[color_index] // Settings.RIGHT_PUT_LIMIT * 3)
         target_pose[2] = Settings.RIGHT_PUT_BASE[2] + (
-                self.counts[index] % Settings.RIGHT_PUT_LIMIT + 1) * Settings.BLOCK_SIZE
+                self.counts[color_index] % Settings.RIGHT_PUT_LIMIT + 1) * Settings.BLOCK_SIZE
         return target_pose
 
     def blockComes(self):
@@ -180,13 +188,13 @@ class Robot(DobotControl):
 
     @staticmethod
     def getGetPose(i):
-        x = i // 5
+        x = i % 10 // 5
         y = i % 5
         z = i // 10
 
         pose = list(Settings.RIGHT_GET_BASE)
-        pose[0] += x * Settings.RIGHT_GET_DIS
-        pose[1] -= y * Settings.RIGHT_GET_DIS
+        pose[0] += x * Settings.RIGHT_GET_DIS_X
+        pose[1] -= y * Settings.RIGHT_GET_DIS_Y
         pose[2] += z * Settings.BLOCK_SIZE
 
         return pose
@@ -194,5 +202,7 @@ class Robot(DobotControl):
 
 if __name__ == '__main__':
     right = Robot()
-    right.connect(Robot.search()[0])
+    right.setAddr(Robot.search()[0])
     right.run()
+    # right.counts = [0, 2, 3]
+    # print(right.getShouldBlocksHeight(0))

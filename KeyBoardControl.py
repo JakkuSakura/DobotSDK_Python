@@ -15,7 +15,7 @@ import DualCarriers
 class Dobot(DualCarriers.DobotControl):
     def __init__(self):
         super().__init__()
-        self.home_pose = (219.97760009765625, -4.5157277781981975e-05, 80.15045928955078)
+        self.home_pose = (219.97760009765625, -4.5157277781981975e-05, 60.15045928955078)
         self.running = False
         self.command = ""
 
@@ -66,14 +66,6 @@ class Dobot(DualCarriers.DobotControl):
                     self.command = self.command[2:]
                     spt = self.command.split()
                     self.moveTo(spt[0], spt[1], spt[2], spt[3])
-                elif self.command == "snm":
-                    spt = self.command.split()
-                    if len(spt) == 2:
-                        self.setName(spt[1][:25])
-                    else:
-                        self.setName(str(uuid)[:25])
-                elif self.command == "nm":
-                    print(self.device_name)
                 elif self.command == 'pt':
                     print(self.addr)
                 else:
@@ -103,7 +95,7 @@ class Command:
             e.start()
         try:
             while True:
-                time.sleep(0.1)
+                time.sleep(0.3)
                 cmd_ = input(">> ")
                 try:
                     if not cmd_:
@@ -130,9 +122,9 @@ class Command:
 
 if __name__ == "__main__":
     sr = Dobot.search()
-    dobots = [Dobot()] * len(sr)
     cmd = Command()
-    for i in range(len(dobots)):
-        dobots[i].connect(sr[i])
-        cmd.add(dobots[i])
+    for i in range(len(sr)):
+        dbt = Dobot()
+        dbt.setAddr(sr[i])
+        cmd.add(dbt)
     cmd.work()
