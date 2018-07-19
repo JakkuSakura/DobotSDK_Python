@@ -4,7 +4,7 @@ from typing import List
 
 import DobotAPI
 import DobotTypes
-from DobotControl import DobotControl, find_color_index, color_exists
+from DobotControl import DobotControl, ensure_color_index, color_exists, ensure_color_tuple
 
 
 class Settings:
@@ -68,7 +68,7 @@ class ColorInteral(threading.Thread):
 
     def run(self):
         while self.right.glb.is_running:
-            if color_exists(self.right.readColor(times=30)):
+            if color_exists(self.right.readColor(blank_times=30)):
                 self.right.glb.is_taken = False
                 self.right.glb.is_first_block_arrived = True
             else:
@@ -129,10 +129,10 @@ class Right(DobotControl):
         for i in range(12):
             if not self.glb.is_running:
                 return
-            self.moveAboveGetPlace(last_color_index=find_color_index(color), down=15)
+            self.moveAboveGetPlace(last_color_index=ensure_color_index(color), down=15)
             # if not self.glb.trans_moto_control:
             # self.waitComes()
-            color = self.readColor(times=15, default=(0, 1, 0))
+            color = self.readColor(blank_times=15, default=(0, 1, 0))
             self.interal.hold = True
             self.capture(down=0, up=0)
             self.glb.is_taken = True
@@ -153,10 +153,23 @@ class Right(DobotControl):
         pose[2] -= down
         self.moveTo(*pose)
 
-    def readColor(self, times=1, default=(0, 0, 0), output=True):
-        for _ in range(times):
+    def readColor(self, blank_times=1, color_times=1, default=(0, 0, 0), output=True):
+        for _ in range(blank_times):
             color = self.getColor()
             if color_exists(color):
+                cl = []
+                for i in range(color_times):
+                    cl.append(ensure_color_index(self.getColor()))
+                cx = [0, 0, 0]
+                for i in range(3):
+                    if color_exists(cl[i]):
+                        cx[i] += 1
+
+                max_index = -1
+                for i in range(3):
+                    if max_index >= 0 and cx[i] > cx[max_index]:
+                        max_index = i
+                color = ensure_color_tuple(max_index, default)
                 break
         else:
             color = default
@@ -204,7 +217,7 @@ class Right(DobotControl):
 
     def moveToPutPlace(self, color, down=0):
         if type(color) == tuple or type(color) == list:
-            index = find_color_index(color, -1)
+            index = ensure_color_index(color, -1)
         else:
             index = color
         now_pose = self.dobot.GetPose()

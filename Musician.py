@@ -3,7 +3,7 @@ import winsound
 
 import DobotAPI
 import DobotTypes
-from DobotControl import DobotControl, color_exists, find_color_index
+from DobotControl import DobotControl, color_exists, ensure_color_index
 
 
 class Right(DobotControl):

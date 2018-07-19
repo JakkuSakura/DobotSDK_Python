@@ -2,7 +2,7 @@ import time
 
 import DobotAPI
 import DobotTypes
-from DobotControl import DobotControl, find_color_index, color_exists
+from DobotControl import DobotControl, ensure_color_index, color_exists
 
 
 class Settings:
@@ -72,7 +72,7 @@ class Robot(DobotControl):
         print("running right")
         for i in range(0, 12):
             print("block", i)
-            self.moveToGetPlace(Settings.BLOCKS_ORDINARY[i], find_color_index(color), down=10)
+            self.moveToGetPlace(Settings.BLOCKS_ORDINARY[i], ensure_color_index(color), down=10)
             self.suck()
             self.gotoColor()
             if Settings.COLOR_SERIES is not None and i < len(Settings.COLOR_SERIES):
@@ -133,7 +133,7 @@ class Robot(DobotControl):
     def moveToPutPlace(self, color, down=0):
         now_pose = self.dobot.GetPose()
         if type(color) == tuple or type(color) == list:
-            index = find_color_index(color, -1)
+            index = ensure_color_index(color, -1)
         else:
             index = color
             if now_pose[2] < 60:

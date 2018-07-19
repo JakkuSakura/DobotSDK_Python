@@ -209,9 +209,21 @@ def color_exists(n):
             return False
 
 
-def find_color_index(lst, default=-1):
-    for i in range(len(lst)):
-        if color_exists(lst[i]):
+def ensure_color_index(tpl, default=-1):
+    if type(tpl) == int:
+        return tpl
+    for i in range(len(tpl)):
+        if color_exists(tpl[i]):
             return i
     else:
         return default
+
+
+def ensure_color_tuple(index, default=(0, 0, 0)):
+    if type(index) == tuple or type(index) == list:
+        return tuple(index)
+    if index < 0:
+        return default
+    lst = [0, 0, 0]
+    lst[index] += 1
+    return tuple(lst)
