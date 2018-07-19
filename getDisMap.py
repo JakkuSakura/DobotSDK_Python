@@ -33,10 +33,10 @@ def get_dis_tick(mm):
 
 if __name__ == '__main__':
     print(dis_map)
-
+    print(get_dis_tick(542 / 6))
     # 插值法之后的x轴值，表示从0到9间距为0.5的18个数
     xnew = np.arange(0, 21000, 20)
-    ynew = np.array([func(e) for e in xnew])
+    ynew = np.array([func(e, k, b) for e in xnew])
 
     plt.plot(x, y, 'ro-')
     plt.plot(xnew, ynew)

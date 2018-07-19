@@ -22,6 +22,9 @@ class DobotControl(Thread):
 
     def __init__(self):
         super().__init__()
+        self.color_sensor = None
+        self.pump = None
+
         self.addr = ""
 
         self.connect_state = -1
@@ -29,6 +32,7 @@ class DobotControl(Thread):
         self.speed = 200
         self.acc = 200
         self.connect_state = -1
+
         self.device_version = "UnkownVersion"
 
     def user_init(self):
@@ -100,10 +104,23 @@ class DobotControl(Thread):
         self.dobot.DisconnectDobot()
 
     def suck(self):
-        return self.dobot.SetEndEffectorSuctionCupEx(1, 1, 1)
+        self.pumpControl(1, 1)
+
+    def blow(self):
+        self.pumpControl(1, 0)
 
     def unsuck(self):
-        return self.dobot.SetEndEffectorSuctionCupEx(1, 0, 1)
+        self.pumpControl(0, 0)
+
+    def pumpControl(self, enable, control):
+        if self.pump:
+            if self.pump[0] > 0:
+                self.dobot.SetIODOEx(self.pump[0], enable, 1)
+
+            if self.pump[1] > 0:
+                self.dobot.SetIODOEx(self.pump[1], control, 1)
+        else:
+            self.dobot.SetEndEffectorGripperEx(enable, control, 1)
 
     def getDobot(self):
         return self.dobot
@@ -121,14 +138,6 @@ class DobotControl(Thread):
     def moveInc(self, dx=0, dy=0, dz=0, dr=0, straight=False):
         nowPos = self.dobot.GetPose()
         self.moveTo(nowPos[0] + dx, nowPos[1] + dy, nowPos[2] + dz, nowPos[3] + dr, straight)
-
-    def moveSpt(self, x, y, z, spt_times):
-        now = self.dobot.GetPose()
-        tup = (x, y, z)
-        each_list = [(tup[x] - now[x]) / spt_times for x in range(3)]
-        print(each_list)
-        for i in range(spt_times):
-            self.moveInc(*each_list)
 
     def isOk(self):
         return self.connect_state == DobotTypes.DobotConnect.DobotConnect_Successfully
@@ -155,6 +164,35 @@ class DobotControl(Thread):
     def reset_pose(self):
         if self.dobot.SetLostStepCmd():
             self.dobot.ResetPose(0, 0, 0)
+
+    def setColotSensor(self, output_port, input_left, input_right, enable=True):
+        self.color_sensor = (output_port, input_left, input_right, enable)
+        self.dobot.SetIOMultiplexingEx(output_port, DobotTypes.IOFunction.IOFunctionDO, 1)
+        self.dobot.SetIOMultiplexingEx(input_left, DobotTypes.IOFunction.IOFunctionDI, 1)
+        self.dobot.SetIOMultiplexingEx(input_right, DobotTypes.IOFunction.IOFunctionDI, 1)
+
+        self.dobot.SetIODOEx(output_port, enable, 1)
+
+    def getColorSensor(self):
+        if self.color_sensor:
+            left = self.dobot.GetIODI(self.color_sensor[1])[0]
+            right = self.dobot.GetIODI(self.color_sensor[2])[0]
+
+            if left == 0 and right == 0:
+                return 1, 0, 0
+            elif left == 1 and right == 0:
+                return 0, 1, 0
+            elif left == 0 and right == 1:
+                return 0, 0, 1
+            else:
+                return 0, 0, 0
+        else:
+            return self.dobot.GetColorSensor()
+
+    def setPump(self, power_port, control_port):
+        self.pump = (power_port, control_port)
+        self.dobot.SetIOMultiplexingEx(power_port, DobotTypes.IOFunction.IOFunctionDO, 1)
+        self.dobot.SetIOMultiplexingEx(control_port, DobotTypes.IOFunction.IOFunctionDO, 1)
 
     def __str__(self):
         return "Dobot[{addr}]".format(addr=self.addr)

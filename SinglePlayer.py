@@ -11,15 +11,16 @@ class Settings:
     RIGHT_GET_DIS_X = 25
     RIGHT_GET_DIS_Y = 25
 
-    RIGHT_PUT_DIS_X = 50
+    RIGHT_PUT_DIS_X = 55
     RIGHT_PUT_DIS_Y = 30
 
-    RIGHT_GET_BASE = (212.95521545410156, 52.0932502746582, -35.081871032714844)
-    RIGHT_COLOR_BASE = (193.3789825439453, 170.01522827148438, 20.47089385986328)
-    RIGHT_PUT_BASE = (115.4960708618164, 145.10301208496094, -66.67840576171875)
+    RIGHT_GET_BASE = (208.95521545410156, 67.0932502746582, -40.081871032714844)
+    RIGHT_COLOR_BASE = (178.8518829345703, 174.12266540527344, 7.488426208496094)
+    RIGHT_PUT_BASE = (115.4960708618164, 145.10301208496094, -60.67840576171875)
     RIGHT_WASTE_POSE = (186.422119140625, 232.47254943847656, 15.287193298339844)
 
     BLOCK_SIZE = 28
+
     DobotAPI.OutPutFlag = False
     RIGHT_DEBUG = False
     COLOR_PORT = DobotTypes.ColorPort.PORT_GP2
@@ -69,7 +70,7 @@ class Robot(DobotControl):
 
         color = (0, 0, 0)
         print("running right")
-        for i in range(2, 12):
+        for i in range(0, 12):
             print("block", i)
             self.moveToGetPlace(Settings.BLOCKS_ORDINARY[i], find_color_index(color), down=10)
             self.suck()
@@ -78,7 +79,7 @@ class Robot(DobotControl):
                 color = Settings.COLOR_SERIES[i]
             else:
                 color = self.readColor(times=10, default=(0, 1, 0))
-            self.moveToPutPlace(color, down=0)
+            self.moveToPutPlace(color, down=10)
             self.release(up=10)
 
     def moveToGetPlace(self, i, last_color_index, down=0):
@@ -99,7 +100,7 @@ class Robot(DobotControl):
                 hz = 500
                 for i in range(3):
                     hz += 200
-                    if color[i]:
+                    if color_exists(color[i]):
                         break
                 import winsound
                 winsound.Beep(hz, 300)

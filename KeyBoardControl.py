@@ -95,7 +95,7 @@ class Command:
             e.start()
         try:
             while True:
-                time.sleep(0.3)
+                time.sleep(1)
                 cmd_ = input(">> ")
                 try:
                     if not cmd_:

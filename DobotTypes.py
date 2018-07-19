@@ -1,4 +1,6 @@
 from ctypes import *
+
+
 class EndType:
     EndTypeCustom = 0
     EndTypeSuctionCup = 1
@@ -569,6 +571,16 @@ InfraredPort = PortGp
 class EMotorPort:
     EMOTOR_1 = 0
     EMOTOR_2 = 1
+
+
+class IOFunction:
+    IOFunctionDummy = 0  # 不配置功能
+    IOFunctionDO = 1  # I/O 电平输出
+    IOFunctionPWM = 2  # PWM 输出
+    IOFunctionDI = 3  # I/O 电平输入
+    IOFunctionADC = 4  # A/D 输入
+    IOFunctionDIPU = 5  # 上拉输入
+    IOFunctionDIPD = 6  # 下拉输入
 
 
 ##################  api, dobotId result   ##################
